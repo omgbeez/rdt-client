@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MonoTorrent;
-using RdtClient.Data.Models.TorrentClient;
+using RdtClient.Data.Models.DebridClient;
 using RdtClient.Service.Helpers;
 using RdtClient.Service.Services;
 using Torrent = RdtClient.Data.Models.Data.Torrent;
@@ -124,6 +124,68 @@ public class TorrentsController(ILogger<TorrentsController> logger, Torrents tor
     }
 
     [HttpPost]
+    [Route("UploadNzbFile")]
+    public async Task<ActionResult> UploadNzbFile([FromForm] IFormFile? file,
+                                                  [ModelBinder(BinderType = typeof(JsonModelBinder))]
+                                                  TorrentControllerUploadFileRequest? formData)
+    {
+        if (file == null || file.Length <= 0)
+        {
+            return BadRequest("Invalid nzb file");
+        }
+
+        if (formData?.Torrent == null)
+        {
+            return BadRequest("Invalid Torrent");
+        }
+
+        logger.LogDebug($"Add nzb file");
+
+        if (String.IsNullOrWhiteSpace(formData.Torrent.RdName))
+        {
+            formData.Torrent.RdName = file.FileName;
+        }
+
+        var fileStream = file.OpenReadStream();
+
+        await using var memoryStream = new MemoryStream();
+
+        await fileStream.CopyToAsync(memoryStream);
+
+        var bytes = memoryStream.ToArray();
+
+        await torrents.AddNzbFileToDebridQueue(bytes, formData.Torrent);
+
+        return Ok();
+    }
+
+    [HttpPost]
+    [Route("UploadNzbLink")]
+    public async Task<ActionResult> UploadNzbLink([FromBody] TorrentControllerUploadNzbLinkRequest? request)
+    {
+        if (request == null)
+        {
+            return BadRequest();
+        }
+
+        if (String.IsNullOrEmpty(request.NzbLink))
+        {
+            return BadRequest("Invalid nzb link");
+        }
+
+        if (request.Torrent == null)
+        {
+            return BadRequest("Invalid Torrent");
+        }
+
+        logger.LogDebug($"Add nzb link {request.NzbLink}");
+
+        await torrents.AddNzbLinkToDebridQueue(request.NzbLink, request.Torrent);
+
+        return Ok();
+    }
+
+    [HttpPost]
     [Route("CheckFiles")]
     public async Task<ActionResult> CheckFiles([FromForm] IFormFile? file)
     {
@@ -233,7 +295,7 @@ public class TorrentsController(ILogger<TorrentsController> logger, Torrents tor
         var includeError = "";
         var excludeError = "";
 
-        IList<TorrentClientAvailableFile> availableFiles;
+        IList<DebridClientAvailableFile> availableFiles;
 
         if (!String.IsNullOrWhiteSpace(request.MagnetLink))
         {
@@ -260,7 +322,7 @@ public class TorrentsController(ILogger<TorrentsController> logger, Torrents tor
             return BadRequest();
         }
 
-        var selectedFiles = new List<TorrentClientAvailableFile>();
+        var selectedFiles = new List<DebridClientAvailableFile>();
 
         if (!String.IsNullOrWhiteSpace(request.IncludeRegex))
         {
@@ -318,6 +380,12 @@ public class TorrentControllerUploadFileRequest
 public class TorrentControllerUploadMagnetRequest
 {
     public String? MagnetLink { get; set; }
+    public Torrent? Torrent { get; set; }
+}
+
+public class TorrentControllerUploadNzbLinkRequest
+{
+    public String? NzbLink { get; set; }
     public Torrent? Torrent { get; set; }
 }
 

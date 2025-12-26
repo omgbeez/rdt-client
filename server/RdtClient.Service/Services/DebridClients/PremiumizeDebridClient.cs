@@ -3,14 +3,14 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using PremiumizeNET;
 using RdtClient.Data.Enums;
-using RdtClient.Data.Models.TorrentClient;
+using RdtClient.Data.Models.DebridClient;
 using RdtClient.Service.Helpers;
 using RdtClient.Data.Models.Data;
 using Torrent = RdtClient.Data.Models.Data.Torrent;
 
-namespace RdtClient.Service.Services.TorrentClients;
+namespace RdtClient.Service.Services.DebridClients;
 
-public class PremiumizeTorrentClient(ILogger<PremiumizeTorrentClient> logger, IHttpClientFactory httpClientFactory, IDownloadableFileFilter fileFilter) : ITorrentClient
+public class PremiumizeDebridClient(ILogger<PremiumizeDebridClient> logger, IHttpClientFactory httpClientFactory, IDownloadableFileFilter fileFilter) : IDebridClient
 {
     private PremiumizeNETClient GetClient()
     {
@@ -44,7 +44,7 @@ public class PremiumizeTorrentClient(ILogger<PremiumizeTorrentClient> logger, IH
         }
     }
 
-    private static TorrentClientTorrent Map(Transfer transfer)
+    private static DebridClientTorrent Map(Transfer transfer)
     {
         return new()
         {
@@ -72,13 +72,13 @@ public class PremiumizeTorrentClient(ILogger<PremiumizeTorrentClient> logger, IH
         };
     }
 
-    public async Task<IList<TorrentClientTorrent>> GetTorrents()
+    public async Task<IList<DebridClientTorrent>> GetDownloads()
     {
         var results = await GetClient().Transfers.ListAsync();
         return results.Select(Map).ToList();
     }
 
-    public async Task<TorrentClientUser> GetUser()
+    public async Task<DebridClientUser> GetUser()
     {
         var user = await GetClient().Account.InfoAsync() ?? throw new("Unable to get user");
 
@@ -89,7 +89,7 @@ public class PremiumizeTorrentClient(ILogger<PremiumizeTorrentClient> logger, IH
         };
     }
 
-    public async Task<String> AddMagnet(String magnetLink)
+    public async Task<String> AddTorrentMagnet(String magnetLink)
     {
         var result = await GetClient().Transfers.CreateAsync(magnetLink, "");
 
@@ -103,7 +103,7 @@ public class PremiumizeTorrentClient(ILogger<PremiumizeTorrentClient> logger, IH
         return resultId;
     }
 
-    public async Task<String> AddFile(Byte[] bytes)
+    public async Task<String> AddTorrentFile(Byte[] bytes)
     {
         var result = await GetClient().Transfers.CreateAsync(bytes, "");
 
@@ -117,9 +117,19 @@ public class PremiumizeTorrentClient(ILogger<PremiumizeTorrentClient> logger, IH
         return resultId;
     }
 
-    public Task<IList<TorrentClientAvailableFile>> GetAvailableFiles(String hash)
+    public Task<String> AddNzbLink(String nzbLink)
     {
-        return Task.FromResult<IList<TorrentClientAvailableFile>>([]);
+        throw new NotSupportedException();
+    }
+
+    public Task<String> AddNzbFile(Byte[] bytes)
+    {
+        throw new NotSupportedException();
+    }
+
+    public Task<IList<DebridClientAvailableFile>> GetAvailableFiles(String hash)
+    {
+        return Task.FromResult<IList<DebridClientAvailableFile>>([]);
     }
 
     /// <inheritdoc />
@@ -130,17 +140,17 @@ public class PremiumizeTorrentClient(ILogger<PremiumizeTorrentClient> logger, IH
         return Task.FromResult<Int32?>(1);
     }
 
-    public async Task Delete(String id)
+    public async Task Delete(Torrent torrent)
     {
-        await GetClient().Transfers.DeleteAsync(id);
+        await GetClient().Transfers.DeleteAsync(torrent.RdId);
     }
 
-    public Task<String> Unrestrict(String link)
+    public Task<String> Unrestrict(Torrent torrent, String link)
     {
         return Task.FromResult(link);
     }
 
-    public async Task<Torrent> UpdateData(Torrent torrent, TorrentClientTorrent? torrentClientTorrent)
+    public async Task<Torrent> UpdateData(Torrent torrent, DebridClientTorrent? torrentClientTorrent)
     {
         try
         {
@@ -249,7 +259,7 @@ public class PremiumizeTorrentClient(ILogger<PremiumizeTorrentClient> logger, IH
         return Task.FromResult(download.FileName);
     }
 
-    private async Task<TorrentClientTorrent> GetInfo(String id)
+    private async Task<DebridClientTorrent> GetInfo(String id)
     {
         var results = await GetClient().Transfers.ListAsync();
         var result = results.FirstOrDefault(m => m.Id == id) ?? throw new($"Unable to find transfer with ID {id}");

@@ -3,15 +3,15 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using DebridLinkFrNET; 
 using RdtClient.Data.Enums;
-using RdtClient.Data.Models.TorrentClient;
+using RdtClient.Data.Models.DebridClient;
 using RdtClient.Service.Helpers;
 using RdtClient.Data.Models.Data;
 using Download = RdtClient.Data.Models.Data.Download;
 using Torrent = DebridLinkFrNET.Models.Torrent;
 
-namespace RdtClient.Service.Services.TorrentClients;
+namespace RdtClient.Service.Services.DebridClients;
 
-public class DebridLinkClient(ILogger<DebridLinkClient> logger, IHttpClientFactory httpClientFactory, IDownloadableFileFilter fileFilter) : ITorrentClient
+public class DebridLinkClient(ILogger<DebridLinkClient> logger, IHttpClientFactory httpClientFactory, IDownloadableFileFilter fileFilter) : IDebridClient
 {
     private DebridLinkFrNETClient GetClient()
     {
@@ -54,7 +54,7 @@ public class DebridLinkClient(ILogger<DebridLinkClient> logger, IHttpClientFacto
         }
     }
 
-    private TorrentClientTorrent Map(Torrent torrent)
+    private DebridClientTorrent Map(Torrent torrent)
     {
         return new()
         {
@@ -69,7 +69,7 @@ public class DebridLinkClient(ILogger<DebridLinkClient> logger, IHttpClientFacto
             Progress = torrent.DownloadPercent,
             Status = torrent.Status.ToString(),
             Added = DateTimeOffset.FromUnixTimeSeconds(torrent.Created),
-            Files = (torrent.Files ?? []).Select((m, i) => new TorrentClientFile
+            Files = (torrent.Files ?? []).Select((m, i) => new DebridClientFile
                                          {
                                              Path = m.Name ?? "",
                                              Bytes = m.Size,
@@ -85,7 +85,7 @@ public class DebridLinkClient(ILogger<DebridLinkClient> logger, IHttpClientFacto
         };
     }
 
-    public async Task<IList<TorrentClientTorrent>> GetTorrents()
+    public async Task<IList<DebridClientTorrent>> GetDownloads()
     {
         var page = 0;
         var results = new List<Torrent>();
@@ -107,7 +107,7 @@ public class DebridLinkClient(ILogger<DebridLinkClient> logger, IHttpClientFacto
         return results.Select(Map).ToList();
     }
 
-    public async Task<TorrentClientUser> GetUser()
+    public async Task<DebridClientUser> GetUser()
     {
         var user = await GetClient().Account.Infos();
             
@@ -118,23 +118,33 @@ public class DebridLinkClient(ILogger<DebridLinkClient> logger, IHttpClientFacto
         };
     }
 
-    public async Task<String> AddMagnet(String magnetLink)
+    public async Task<String> AddTorrentMagnet(String magnetLink)
     {
         var result = await GetClient().Seedbox.AddTorrentAsync(magnetLink);
 
         return result.Id ?? "";
     }
 
-    public async Task<String> AddFile(Byte[] bytes)
+    public async Task<String> AddTorrentFile(Byte[] bytes)
     {
         var result = await GetClient().Seedbox.AddTorrentByFileAsync(bytes);
 
         return result.Id ?? "";
     }
 
-    public Task<IList<TorrentClientAvailableFile>> GetAvailableFiles(String hash)
+    public Task<String> AddNzbLink(String nzbLink)
     {
-        return Task.FromResult<IList<TorrentClientAvailableFile>>([]);
+        throw new NotSupportedException();
+    }
+
+    public Task<String> AddNzbFile(Byte[] bytes)
+    {
+        throw new NotSupportedException();
+    }
+
+    public Task<IList<DebridClientAvailableFile>> GetAvailableFiles(String hash)
+    {
+        return Task.FromResult<IList<DebridClientAvailableFile>>([]);
     }
 
     /// <inheritdoc />
@@ -143,17 +153,17 @@ public class DebridLinkClient(ILogger<DebridLinkClient> logger, IHttpClientFacto
         return Task.FromResult<Int32?>(torrent.Files.Count);
     }
 
-    public async Task Delete(String torrentId)
+    public async Task Delete(Data.Models.Data.Torrent torrent)
     {
-        await GetClient().Seedbox.DeleteAsync(torrentId);
+        await GetClient().Seedbox.DeleteAsync(torrent.RdId!);
     }
 
-    public Task<String> Unrestrict(String link)
+    public Task<String> Unrestrict(Data.Models.Data.Torrent torrent, String link)
     {
         return Task.FromResult(link);
     }
 
-    public async Task<Data.Models.Data.Torrent> UpdateData(Data.Models.Data.Torrent torrent, TorrentClientTorrent? torrentClientTorrent)
+    public async Task<Data.Models.Data.Torrent> UpdateData(Data.Models.Data.Torrent torrent, DebridClientTorrent? torrentClientTorrent)
     {
         try
         {
@@ -260,7 +270,7 @@ public class DebridLinkClient(ILogger<DebridLinkClient> logger, IHttpClientFacto
                         .ToList();
     }
 
-    private async Task<TorrentClientTorrent> GetInfo(String torrentId)
+    private async Task<DebridClientTorrent> GetInfo(String torrentId)
     {
         var result = await GetClient().Seedbox.ListAsync(torrentId);
 
