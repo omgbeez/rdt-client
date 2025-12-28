@@ -211,4 +211,45 @@ public class SabnzbdControllerTest
         // Assert
         Assert.IsType<NotFoundObjectResult>(result);
     }
+
+    [Fact]
+    public async Task AddFile_WithQueryParameters_SetsCategoryAndPriority()
+    {
+        // Arrange
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Method = "POST";
+        httpContext.Request.QueryString = new QueryString("?cat=radarr&priority=-100");
+        
+        // Mocking multipart form data
+        var fileMock = new Mock<IFormFile>();
+        var content = "test content";
+        var fileName = "test.nzb";
+        var ms = new MemoryStream();
+        var writer = new StreamWriter(ms);
+        writer.Write(content);
+        writer.Flush();
+        ms.Position = 0;
+        fileMock.Setup(_ => _.OpenReadStream()).Returns(ms);
+        fileMock.Setup(_ => _.FileName).Returns(fileName);
+        fileMock.Setup(_ => _.Length).Returns(ms.Length);
+        fileMock.Setup(_ => _.CopyToAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+                .Callback<Stream, CancellationToken>((s, _) => ms.CopyTo(s))
+                .Returns(Task.CompletedTask);
+
+        httpContext.Request.ContentType = "multipart/form-data; boundary=something";
+        httpContext.Request.Form = new FormCollection(new Dictionary<String, Microsoft.Extensions.Primitives.StringValues>(), new FormFileCollection { fileMock.Object });
+        
+        _controller.ControllerContext.HttpContext = httpContext;
+        _sabnzbdMock.Setup(s => s.AddFile(It.IsAny<Byte[]>(), "radarr", -100)).ReturnsAsync("nzo_id_123");
+
+        // Act
+        var result = await _controller.AddFile();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<SabnzbdResponse>(okResult.Value);
+        Assert.True(response.Status);
+        Assert.Contains("nzo_id_123", response.NzoIds);
+        _sabnzbdMock.Verify(s => s.AddFile(It.IsAny<Byte[]>(), "radarr", -100), Times.Once);
+    }
 }

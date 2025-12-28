@@ -112,8 +112,8 @@ public class SabnzbdController(ILogger<SabnzbdController> logger, Sabnzbd sabnzb
             return BadRequest("No file uploaded");
         }
 
-        var category = Request.Form["cat"].ToString();
-        var priorityStr = Request.Form["priority"].ToString();
+        var category = GetParam("cat");
+        var priorityStr = GetParam("priority");
         Int32? priority = Int32.TryParse(priorityStr, out var p) ? p : null;
 
         using var ms = new MemoryStream();
