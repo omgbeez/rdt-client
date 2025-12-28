@@ -75,6 +75,7 @@ public class TorrentData(DataContext dataContext) : ITorrentData
                                    String hash,
                                    String? fileOrMagnetContents,
                                    Boolean isFile,
+                                   DownloadType downloadType,
                                    DownloadClient downloadClient,
                                    Torrent torrent)
     {
@@ -94,6 +95,7 @@ public class TorrentData(DataContext dataContext) : ITorrentData
             ExcludeRegex = torrent.ExcludeRegex,
             DownloadManualFiles = torrent.DownloadManualFiles,
             DownloadClient = downloadClient,
+            Type = downloadType,
             FileOrMagnet = fileOrMagnetContents,
             IsFile = isFile,
             Priority = torrent.Priority,
@@ -151,6 +153,22 @@ public class TorrentData(DataContext dataContext) : ITorrentData
         }
         
         dbTorrent.RdId = rdId;
+
+        await dataContext.SaveChangesAsync();
+
+        await VoidCache();
+    }
+
+    public async Task UpdateHash(Torrent torrent, String hash)
+    {
+        var dbTorrent = await dataContext.Torrents.FirstOrDefaultAsync(m => m.TorrentId == torrent.TorrentId);
+
+        if (dbTorrent == null)
+        {
+            return;
+        }
+
+        dbTorrent.Hash = hash.ToLower();
 
         await dataContext.SaveChangesAsync();
 
