@@ -75,7 +75,7 @@ public class Sabnzbd(ILogger<Sabnzbd> logger, Torrents torrents, AppSettings app
                     NzoId = t.Hash,
                     Name = t.RdName ?? t.Hash,
                     Size = FileSizeHelper.FormatSize(t.Downloads.Sum(d => d.BytesTotal)),
-                    Status = "Completed",
+                    Status = String.IsNullOrWhiteSpace(t.Error) ? "Completed" : "Failed",
                     Category = t.Category ?? "Default",
                     Path = path
                 };

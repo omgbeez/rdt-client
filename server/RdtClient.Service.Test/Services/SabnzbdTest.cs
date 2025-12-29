@@ -191,6 +191,35 @@ public class SabnzbdTest
     }
 
     [Fact]
+    public async Task GetHistory_ShouldReturnFailedStatus_WhenTorrentHasError()
+    {
+        // Arrange
+        var torrentList = new List<Torrent>
+        {
+            new()
+            {
+                Hash = "hash1",
+                RdName = "NZB 1",
+                Type = DownloadType.Nzb,
+                Completed = DateTimeOffset.UtcNow,
+                Error = "Some error occurred",
+                Downloads = new List<Download>()
+            }
+        };
+
+        _torrentsMock.Setup(t => t.Get()).ReturnsAsync(torrentList);
+
+        var sabnzbd = new Sabnzbd(_loggerMock.Object, _torrentsMock.Object, _appSettings);
+
+        // Act
+        var result = await sabnzbd.GetHistory();
+
+        // Assert
+        Assert.Single(result.Slots);
+        Assert.Equal("Failed", result.Slots[0].Status);
+    }
+
+    [Fact]
     public void GetConfig_ShouldReturnCorrectConfig()
     {
         // Arrange
