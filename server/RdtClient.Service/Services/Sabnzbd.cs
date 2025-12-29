@@ -17,28 +17,57 @@ public class Sabnzbd(ILogger<Sabnzbd> logger, Torrents torrents, AppSettings app
         var queue = new SabnzbdQueue
         {
             NoOfSlots = activeTorrents.Count,
-            Slots = activeTorrents.Select((t, index) => new SabnzbdQueueSlot
+            Slots = activeTorrents.Select((t, index) =>
             {
-                Index = index,
-                NzoId = t.Hash,
-                Filename = t.RdName ?? t.Hash,
-                Size = FileSizeHelper.FormatSize(t.Downloads.Sum(d => d.BytesTotal)),
-                SizeLeft = FileSizeHelper.FormatSize(t.Downloads.Sum(d => d.BytesTotal - d.BytesDone)),
-                Percentage = (t.RdProgress ?? 0).ToString("0"),
-                
-                Status = t.RdStatus switch
+                Double downloadProgress = 0;
+                var rdProgress = (t.RdProgress ?? 0.0) / 100.0;
+
+                if (t.Downloads.Count > 0)
                 {
-                    TorrentStatus.Processing => "Propagating",
-                    TorrentStatus.Finished => "Completed",
-                    TorrentStatus.Downloading => "Downloading",
-                    TorrentStatus.WaitingForFileSelection => "Propagating",
-                    TorrentStatus.Error => "Failed",
-                    TorrentStatus.Queued => "Queued",
-                    _ => "Downloading"
-                },
-                Category = t.Category ?? "*",
-                Priority = "Normal",
-                TimeLeft = "0:00:00"
+                    var bytesDone = t.Downloads.Sum(m => m.BytesDone);
+                    var bytesTotal = t.Downloads.Sum(m => m.BytesTotal);
+                    downloadProgress = bytesTotal > 0 ? (Double)bytesDone / bytesTotal : 0;
+                }
+
+                var progress = (rdProgress + downloadProgress) / 2.0;
+
+                var timeLeft = "0:00:00";
+                var startTime = t.Retry > t.Added ? t.Retry.Value : t.Added;
+                var elapsed = DateTimeOffset.UtcNow - startTime;
+
+                if (progress > 0 && progress < 1.0)
+                {
+                    var totalEstimatedTime = TimeSpan.FromTicks((Int64)(elapsed.Ticks / progress));
+                    var remaining = totalEstimatedTime - elapsed;
+                    if (remaining.TotalSeconds > 0)
+                    {
+                        timeLeft = $"{(Int32)remaining.TotalHours}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
+                    }
+                }
+
+                return new SabnzbdQueueSlot
+                {
+                    Index = index,
+                    NzoId = t.Hash,
+                    Filename = t.RdName ?? t.Hash,
+                    Size = FileSizeHelper.FormatSize(t.Downloads.Sum(d => d.BytesTotal)),
+                    SizeLeft = FileSizeHelper.FormatSize(t.Downloads.Sum(d => d.BytesTotal - d.BytesDone)),
+                    Percentage = (progress * 100.0).ToString("0"),
+
+                    Status = t.RdStatus switch
+                    {
+                        TorrentStatus.Processing => "Propagating",
+                        TorrentStatus.Finished => "Completed",
+                        TorrentStatus.Downloading => "Downloading",
+                        TorrentStatus.WaitingForFileSelection => "Propagating",
+                        TorrentStatus.Error => "Failed",
+                        TorrentStatus.Queued => "Queued",
+                        _ => "Downloading"
+                    },
+                    Category = t.Category ?? "*",
+                    Priority = "Normal",
+                    TimeLeft = timeLeft
+                };
             }).ToList()
         };
 

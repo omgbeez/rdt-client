@@ -51,7 +51,136 @@ public class SabnzbdTest
         Assert.Single(result.Slots);
         Assert.Equal("hash1", result.Slots[0].NzoId);
         Assert.Equal("Name 1", result.Slots[0].Filename);
+        // (50% debrid + 50% download) / 2 = 50%
         Assert.Equal("50", result.Slots[0].Percentage);
+    }
+
+    [Fact]
+    public async Task GetQueue_ShouldCalculatePercentageCorrectly_WhenDifferentProgress()
+    {
+        // Arrange
+        var torrentList = new List<Torrent>
+        {
+            new()
+            {
+                Hash = "hash1",
+                RdName = "Name 1",
+                RdProgress = 100,
+                Type = DownloadType.Nzb,
+                Downloads = new List<Download>
+                {
+                    new()
+                        { BytesTotal = 1000, BytesDone = 0 }
+                }
+            }
+        };
+
+        _torrentsMock.Setup(t => t.Get()).ReturnsAsync(torrentList);
+
+        var sabnzbd = new Sabnzbd(_loggerMock.Object, _torrentsMock.Object, _appSettings);
+
+        // Act
+        var result = await sabnzbd.GetQueue();
+
+        // Assert
+        // (100% debrid + 0% download) / 2 = 50%
+        Assert.Equal("50", result.Slots[0].Percentage);
+    }
+
+    [Fact]
+    public async Task GetQueue_ShouldCalculateTimeLeftCorrectly()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        var added = now.AddMinutes(-10);
+        var torrentList = new List<Torrent>
+        {
+            new()
+            {
+                Hash = "hash1",
+                RdName = "Name 1",
+                Added = added,
+                RdProgress = 100, // 100% debrid
+                Type = DownloadType.Nzb,
+                Downloads = new List<Download>
+                {
+                    new()
+                    {
+                        BytesTotal = 1000,
+                        BytesDone = 0 // 0% download
+                    }
+                }
+            }
+        };
+        // Overall progress = (1.0 + 0.0) / 2 = 0.5
+        // Elapsed = 10 minutes
+        // Total estimated = 10 / 0.5 = 20 minutes
+        // Time left = 20 - 10 = 10 minutes
+
+        _torrentsMock.Setup(t => t.Get()).ReturnsAsync(torrentList);
+
+        var sabnzbd = new Sabnzbd(_loggerMock.Object, _torrentsMock.Object, _appSettings);
+
+        // Act
+        var result = await sabnzbd.GetQueue();
+
+        // Assert
+        // Allow for some small variation in time calculation during test execution
+        var timeLeftParts = result.Slots[0].TimeLeft.Split(':');
+        var hours = Int32.Parse(timeLeftParts[0]);
+        var minutes = Int32.Parse(timeLeftParts[1]);
+        
+        Assert.Equal(0, hours);
+        Assert.InRange(minutes, 9, 11);
+    }
+
+    [Fact]
+    public async Task GetQueue_ShouldCalculateTimeLeftCorrectly_WithRetry()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        var added = now.AddMinutes(-20);
+        var retry = now.AddMinutes(-10);
+        var torrentList = new List<Torrent>
+        {
+            new()
+            {
+                Hash = "hash1",
+                RdName = "Name 1",
+                Added = added,
+                Retry = retry,
+                RdProgress = 100, // 100% debrid
+                Type = DownloadType.Nzb,
+                Downloads = new List<Download>
+                {
+                    new()
+                    {
+                        BytesTotal = 1000,
+                        BytesDone = 0 // 0% download
+                    }
+                }
+            }
+        };
+        // Later of Added and Retry is Retry (-10 mins)
+        // Overall progress = (1.0 + 0.0) / 2 = 0.5
+        // Elapsed = 10 minutes
+        // Total estimated = 10 / 0.5 = 20 minutes
+        // Time left = 20 - 10 = 10 minutes
+
+        _torrentsMock.Setup(t => t.Get()).ReturnsAsync(torrentList);
+
+        var sabnzbd = new Sabnzbd(_loggerMock.Object, _torrentsMock.Object, _appSettings);
+
+        // Act
+        var result = await sabnzbd.GetQueue();
+
+        // Assert
+        var timeLeftParts = result.Slots[0].TimeLeft.Split(':');
+        var hours = Int32.Parse(timeLeftParts[0]);
+        var minutes = Int32.Parse(timeLeftParts[1]);
+        
+        Assert.Equal(0, hours);
+        Assert.InRange(minutes, 9, 11);
     }
 
     [Fact]
