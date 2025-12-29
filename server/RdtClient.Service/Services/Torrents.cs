@@ -136,6 +136,7 @@ public class Torrents(
 
     public virtual async Task<Torrent> AddNzbFileToDebridQueue(Byte[] bytes, Torrent torrent)
     {
+        torrent.RdName = "Unknown NZB";
         torrent.RdStatus = TorrentStatus.Queued;
         try
         {
