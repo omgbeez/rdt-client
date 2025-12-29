@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
+using Newtonsoft.Json;
 using RdtClient.Data.Enums;
 using RdtClient.Data.Models.Data;
+using RdtClient.Data.Models.DebridClient;
 using RdtClient.Service.Services;
 using RdtClient.Service.Services.DebridClients;
 using TorBoxNET;
@@ -276,5 +278,204 @@ public class TorBoxDebridClientTest
         // Assert
         Assert.Equal("new-hash", result);
         usenetApiMock.Verify(m => m.AddFileAsync(bytes, -1, name, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+    [Fact]
+    public async Task GetDownloadInfos_GeneratesCorrectFakedlLinks_ForIndividualFiles()
+    {
+        // Arrange
+        var files = new List<DebridClientFile>
+        {
+            new() { Id = 1, Path = "file1.mkv", Bytes = 1000 },
+            new() { Id = 2, Path = "file2.mkv", Bytes = 2000 }
+        };
+        var torrent = new Torrent
+        {
+            Hash = "test-hash",
+            RdFiles = JsonConvert.SerializeObject(files)
+        };
+
+        var torrentsApiMock = new Mock<ITorrentsApi>();
+        var clientMock = new Mock<TorBoxDebridClient>(_loggerMock.Object, _httpClientFactoryMock.Object, _fileFilterMock.Object);
+        var torBoxClientMock = new Mock<ITorBoxNetClient>();
+        
+        torBoxClientMock.Setup(m => m.Torrents).Returns(torrentsApiMock.Object);
+        clientMock.Protected().Setup<ITorBoxNetClient>("GetClient").Returns(torBoxClientMock.Object);
+        
+        torrentsApiMock.Setup(m => m.GetHashInfoAsync("test-hash", true, It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(new TorrentInfoResult { Id = 12345 });
+
+        _fileFilterMock.Setup(m => m.IsDownloadable(torrent, It.IsAny<String>(), It.IsAny<Int64>())).Returns(true);
+
+        Settings.Get.Provider.PreferZippedDownloads = false;
+
+        // Act
+        var result = await clientMock.Object.GetDownloadInfos(torrent);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Count);
+        Assert.Equal("https://torbox.app/fakedl/12345/1", result[0].RestrictedLink);
+        Assert.Equal("https://torbox.app/fakedl/12345/2", result[1].RestrictedLink);
+    }
+
+    [Fact]
+    public async Task GetDownloadInfos_GeneratesCorrectFakedlLink_ForZipDownload()
+    {
+        // Arrange
+        var files = new List<DebridClientFile>
+        {
+            new() { Id = 1, Path = "file1.mkv", Bytes = 1000 }
+        };
+        var torrent = new Torrent
+        {
+            Hash = "test-hash",
+            RdName = "TestTorrent",
+            RdFiles = JsonConvert.SerializeObject(files),
+            DownloadClient = Data.Enums.DownloadClient.Aria2c
+        };
+
+        Settings.Get.Provider.PreferZippedDownloads = true;
+
+        var torrentsApiMock = new Mock<ITorrentsApi>();
+        var clientMock = new Mock<TorBoxDebridClient>(_loggerMock.Object, _httpClientFactoryMock.Object, _fileFilterMock.Object);
+        var torBoxClientMock = new Mock<ITorBoxNetClient>();
+        
+        torBoxClientMock.Setup(m => m.Torrents).Returns(torrentsApiMock.Object);
+        clientMock.Protected().Setup<ITorBoxNetClient>("GetClient").Returns(torBoxClientMock.Object);
+        
+        torrentsApiMock.Setup(m => m.GetHashInfoAsync("test-hash", true, It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(new TorrentInfoResult { Id = 12345 });
+
+        _fileFilterMock.Setup(m => m.IsDownloadable(torrent, It.IsAny<String>(), It.IsAny<Int64>())).Returns(true);
+
+        // Act
+        var result = await clientMock.Object.GetDownloadInfos(torrent);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Equal("https://torbox.app/fakedl/12345/zip", result[0].RestrictedLink);
+        Assert.Equal("TestTorrent.zip", result[0].FileName);
+    }
+
+    [Fact]
+    public async Task Unrestrict_ParsesFakedlLinksCorrectly_ForIndividualFiles()
+    {
+        // Arrange
+        var torrent = new Torrent
+        {
+            Type = DownloadType.Torrent
+        };
+        var link = "https://torbox.app/fakedl/12345/6789";
+
+        var torrentsApiMock = new Mock<ITorrentsApi>();
+        var clientMock = new Mock<TorBoxDebridClient>(_loggerMock.Object, _httpClientFactoryMock.Object, _fileFilterMock.Object);
+        var torBoxClientMock = new Mock<ITorBoxNetClient>();
+        
+        torBoxClientMock.Setup(m => m.Torrents).Returns(torrentsApiMock.Object);
+        clientMock.Protected().Setup<ITorBoxNetClient>("GetClient").Returns(torBoxClientMock.Object);
+        
+        torrentsApiMock.Setup(m => m.RequestDownloadAsync(12345, 6789, false, It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(new Response<String> { Data = "https://real-download-link" });
+
+        // Act
+        var result = await clientMock.Object.Unrestrict(torrent, link);
+
+        // Assert
+        Assert.Equal("https://real-download-link", result);
+        torrentsApiMock.Verify(m => m.RequestDownloadAsync(12345, 6789, false, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Unrestrict_ParsesFakedlLinksCorrectly_ForZipDownload()
+    {
+        // Arrange
+        var torrent = new Torrent
+        {
+            Type = DownloadType.Torrent
+        };
+        var link = "https://torbox.app/fakedl/12345/zip";
+
+        var torrentsApiMock = new Mock<ITorrentsApi>();
+        var clientMock = new Mock<TorBoxDebridClient>(_loggerMock.Object, _httpClientFactoryMock.Object, _fileFilterMock.Object);
+        var torBoxClientMock = new Mock<ITorBoxNetClient>();
+        
+        torBoxClientMock.Setup(m => m.Torrents).Returns(torrentsApiMock.Object);
+        clientMock.Protected().Setup<ITorBoxNetClient>("GetClient").Returns(torBoxClientMock.Object);
+        
+        torrentsApiMock.Setup(m => m.RequestDownloadAsync(12345, 0, true, It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(new Response<String> { Data = "https://real-zip-download-link" });
+
+        // Act
+        var result = await clientMock.Object.Unrestrict(torrent, link);
+
+        // Assert
+        Assert.Equal("https://real-zip-download-link", result);
+        torrentsApiMock.Verify(m => m.RequestDownloadAsync(12345, 0, true, It.IsAny<CancellationToken>()), Times.Once);
+    }
+    [Fact]
+    public async Task GetDownloadInfos_GeneratesCorrectFakedlLinks_ForUsenet()
+    {
+        // Arrange
+        var files = new List<DebridClientFile>
+        {
+            new() { Id = 1, Path = "file1.nzb", Bytes = 1000 }
+        };
+        var torrent = new Torrent
+        {
+            Type = DownloadType.Nzb,
+            RdId = "nzb-hash",
+            RdFiles = JsonConvert.SerializeObject(files)
+        };
+
+        var usenetApiMock = new Mock<IUsenetApi>();
+        var clientMock = new Mock<TorBoxDebridClient>(_loggerMock.Object, _httpClientFactoryMock.Object, _fileFilterMock.Object);
+        var torBoxClientMock = new Mock<ITorBoxNetClient>();
+        
+        torBoxClientMock.Setup(m => m.Usenet).Returns(usenetApiMock.Object);
+        clientMock.Protected().Setup<ITorBoxNetClient>("GetClient").Returns(torBoxClientMock.Object);
+        
+        usenetApiMock.Setup(m => m.GetCurrentAsync(true, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(new List<UsenetInfoResult> { new() { Hash = "nzb-hash", Id = 98765 } });
+
+        _fileFilterMock.Setup(m => m.IsDownloadable(torrent, It.IsAny<String>(), It.IsAny<Int64>())).Returns(true);
+
+        Settings.Get.Provider.PreferZippedDownloads = false;
+
+        // Act
+        var result = await clientMock.Object.GetDownloadInfos(torrent);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Equal("https://torbox.app/fakedl/98765/1", result[0].RestrictedLink);
+    }
+
+    [Fact]
+    public async Task Unrestrict_ParsesFakedlLinksCorrectly_ForUsenet()
+    {
+        // Arrange
+        var torrent = new Torrent
+        {
+            Type = DownloadType.Nzb
+        };
+        var link = "https://torbox.app/fakedl/98765/4321";
+
+        var usenetApiMock = new Mock<IUsenetApi>();
+        var clientMock = new Mock<TorBoxDebridClient>(_loggerMock.Object, _httpClientFactoryMock.Object, _fileFilterMock.Object);
+        var torBoxClientMock = new Mock<ITorBoxNetClient>();
+        
+        torBoxClientMock.Setup(m => m.Usenet).Returns(usenetApiMock.Object);
+        clientMock.Protected().Setup<ITorBoxNetClient>("GetClient").Returns(torBoxClientMock.Object);
+        
+        usenetApiMock.Setup(m => m.RequestDownloadAsync(98765, 4321, false, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(new Response<String> { Data = "https://real-usenet-link" });
+
+        // Act
+        var result = await clientMock.Object.Unrestrict(torrent, link);
+
+        // Assert
+        Assert.Equal("https://real-usenet-link", result);
+        usenetApiMock.Verify(m => m.RequestDownloadAsync(98765, 4321, false, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

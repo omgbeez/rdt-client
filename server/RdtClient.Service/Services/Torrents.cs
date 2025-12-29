@@ -3,6 +3,7 @@ using System.IO.Abstractions;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Xml;
 using System.Xml.Linq;
 using Microsoft.Extensions.Logging;
 using MonoTorrent;
@@ -135,11 +136,14 @@ public class Torrents(
 
     public virtual async Task<Torrent> AddNzbFileToDebridQueue(Byte[] bytes, Torrent torrent)
     {
+        torrent.RdName = "Unknown NZB";
         torrent.RdStatus = TorrentStatus.Queued;
         try
         {
             using var stream = new MemoryStream(bytes);
-            var doc = XDocument.Load(stream);
+            var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit };
+            using var reader = XmlReader.Create(stream, settings);
+            var doc = XDocument.Load(reader);
             var nzbNamespace = doc.Root?.GetDefaultNamespace() ?? XNamespace.None;
 
             var title = doc.Root?

@@ -290,25 +290,44 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
 
     public async Task<String> Unrestrict(Torrent torrent, String link)
     {
-        var segments = link.Split('/');
+        if (String.IsNullOrWhiteSpace(link))
+        {
+            throw new ArgumentException("Link cannot be null or empty", nameof(link));
+        }
 
-        var zipped = segments[5] == "zip";
-        var fileId = zipped ? "0" : segments[5];
+        var segments = link.Split('/');
+        if (segments is not [_, _, _, _, var torrentIdStr, var fileIdStrOrZip])
+        {
+            throw new ArgumentException($"Invalid link format: {link}", nameof(link));
+        }
+
+        var zipped = fileIdStrOrZip == "zip";
+        var fileIdStr = zipped ? "0" : fileIdStrOrZip;
+
+        if (!Int32.TryParse(torrentIdStr, out var torrentId))
+        {
+            throw new ArgumentException($"Invalid torrent ID in link segment 4: {torrentIdStr}", nameof(link));
+        }
+
+        if (!Int32.TryParse(fileIdStr, out var fileId))
+        {
+            throw new ArgumentException($"Invalid file ID in link segment 5: {fileId}", nameof(link));
+        }
 
         Response<String> result;
 
         if (torrent.Type == DownloadType.Nzb)
         {
-            result = await GetClient().Usenet.RequestDownloadAsync(Convert.ToInt32(segments[4]), Convert.ToInt32(fileId), zipped);
+            result = await GetClient().Usenet.RequestDownloadAsync(torrentId, fileId, zipped);
         }
         else
         {
-            result = await GetClient().Torrents.RequestDownloadAsync(Convert.ToInt32(segments[4]), Convert.ToInt32(fileId), zipped);
+            result = await GetClient().Torrents.RequestDownloadAsync(torrentId, fileId, zipped);
         }
 
         if (result.Error != null)
         {
-            throw new("Unrestrict returned an invalid download");
+            throw new($"Unrestrict returned an invalid download: {result.Error}");
         }
 
         return result.Data!;

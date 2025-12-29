@@ -28,11 +28,13 @@ public class WatchFolderChecker(ILogger<WatchFolderChecker> logger, IServiceProv
         {
             try
             {
-                if (_prevCheck != DateTime.MinValue)
+                var nextCheck = _prevCheck.AddSeconds(Math.Max(Settings.Get.Watch.Interval, 10));
+                if (DateTime.Now < nextCheck)
                 {
-                    await Task.Delay(1000, stoppingToken);
+                    var delay = nextCheck - DateTime.Now;
+                    await Task.Delay(delay, stoppingToken);
                 }
-                _prevCheck = DateTime.Now.AddSeconds(Settings.Get.Watch.Interval);
+                _prevCheck = DateTime.Now;
 
                 if (String.IsNullOrWhiteSpace(Settings.Get.Watch.Path))
                 {

@@ -49,6 +49,14 @@ public class SabnzbdController(ILogger<SabnzbdController> logger, Sabnzbd sabnzb
         if (name == "delete")
         {
             var value = GetParam("value");
+
+            if (String.IsNullOrWhiteSpace(value))
+            {
+                return BadRequest(new SabnzbdResponse
+                {
+                    Error = "No value specified for delete operation"
+                });
+            }
             await sabnzbd.Delete(value ?? "");
             return Ok(new SabnzbdResponse { Status = true });
         }
