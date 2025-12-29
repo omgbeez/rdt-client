@@ -33,6 +33,7 @@ public static class DiConfig
         services.AddScoped<Downloads>();
         services.AddScoped<PremiumizeDebridClient>();
         services.AddScoped<QBittorrent>();
+        services.AddScoped<Sabnzbd>();
         services.AddScoped<RemoteService>();
         services.AddScoped<RealDebridDebridClient>();
         services.AddScoped<Settings>();
@@ -46,6 +47,7 @@ public static class DiConfig
         services.AddSingleton<IEnricher, Enricher>();
 
         services.AddSingleton<IAuthorizationHandler, AuthSettingHandler>();
+        services.AddScoped<IAuthorizationHandler, SabnzbdHandler>();
 
         services.AddHostedService<DiskSpaceMonitor>();
         services.AddHostedService<ProviderUpdater>();

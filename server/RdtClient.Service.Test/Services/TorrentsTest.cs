@@ -336,7 +336,7 @@ public class TorrentsTest
                                                It.IsAny<String>(),
                                                true,
                                                DownloadType.Nzb,
-                                               It.IsAny<RdtClient.Data.Enums.DownloadClient>(),
+                                               It.IsAny<Data.Enums.DownloadClient>(),
                                                It.IsAny<Torrent>()))
              .ReturnsAsync(new Torrent());
 
@@ -361,7 +361,7 @@ public class TorrentsTest
                                                 It.IsAny<String>(),
                                                 true,
                                                 DownloadType.Nzb,
-                                                It.IsAny<RdtClient.Data.Enums.DownloadClient>(),
+                                                It.IsAny<Data.Enums.DownloadClient>(),
                                                 It.IsAny<Torrent>()), Times.Once);
     }
 
@@ -381,7 +381,7 @@ public class TorrentsTest
                                                It.IsAny<String>(),
                                                false,
                                                DownloadType.Nzb,
-                                               It.IsAny<RdtClient.Data.Enums.DownloadClient>(),
+                                               It.IsAny<Data.Enums.DownloadClient>(),
                                                It.IsAny<Torrent>()))
              .ReturnsAsync(new Torrent());
 
@@ -406,7 +406,7 @@ public class TorrentsTest
                                                 link,
                                                 false,
                                                 DownloadType.Nzb,
-                                                It.IsAny<RdtClient.Data.Enums.DownloadClient>(),
+                                                It.IsAny<Data.Enums.DownloadClient>(),
                                                 It.IsAny<Torrent>()), Times.Once);
     }
 }

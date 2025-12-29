@@ -149,7 +149,7 @@ public class RealDebridDebridClient(ILogger<RealDebridDebridClient> logger, IHtt
         throw new NotSupportedException();
     }
 
-    public Task<String> AddNzbFile(Byte[] bytes)
+    public Task<String> AddNzbFile(Byte[] bytes, String? name)
     {
         throw new NotSupportedException();
     }

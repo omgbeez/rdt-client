@@ -70,10 +70,9 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
        });
 
 
-builder.Services.AddAuthorizationBuilder().AddPolicy("AuthSetting", policyCorrectUser =>
-{
-    policyCorrectUser.Requirements.Add(new AuthSettingRequirement());
-});
+builder.Services.AddAuthorizationBuilder()
+       .AddPolicy("AuthSetting", policyCorrectUser => { policyCorrectUser.Requirements.Add(new AuthSettingRequirement()); })
+       .AddPolicy("Sabnzbd", policyCorrectUser => { policyCorrectUser.Requirements.Add(new SabnzbdRequirement()); });
 
 
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>

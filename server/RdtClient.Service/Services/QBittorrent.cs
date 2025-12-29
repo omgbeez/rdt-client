@@ -19,7 +19,6 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
     public async Task AuthLogout()
     {
         logger.LogDebug("Auth logout");
-
         await authentication.Logout();
     }
 
@@ -191,6 +190,7 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
         var results = new List<TorrentInfo>();
 
         var allTorrents = await torrents.Get();
+        allTorrents = allTorrents.Where(m => m.Type == DownloadType.Torrent).ToList();
 
         var prio = 0;
 
@@ -322,7 +322,7 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
 
         var torrent = await torrents.GetByHash(hash);
 
-        if (torrent == null)
+        if (torrent == null || torrent.Type != DownloadType.Torrent)
         {
             return null;
         }
@@ -346,7 +346,7 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
 
         var torrent = await torrents.GetByHash(hash);
 
-        if (torrent == null)
+        if (torrent == null || torrent.Type != DownloadType.Torrent)
         {
             return null;
         }
@@ -420,7 +420,7 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
 
         var torrent = await torrents.GetByHash(hash);
 
-        if (torrent == null)
+        if (torrent == null || torrent.Type != DownloadType.Torrent)
         {
             return;
         }
@@ -512,7 +512,7 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
     {
         var allTorrents = await torrents.Get();
 
-        var torrentsToGroup = allTorrents.Where(m => !String.IsNullOrWhiteSpace(m.Category))
+        var torrentsToGroup = allTorrents.Where(m => m.Type == DownloadType.Torrent && !String.IsNullOrWhiteSpace(m.Category))
                                       .Select(m => m.Category!.ToLower())
                                       .ToList();
 
@@ -593,6 +593,13 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
 
     public async Task TorrentsTopPrio(String hash)
     {
+        var torrent = await torrents.GetByHash(hash);
+
+        if (torrent == null || torrent.Type != DownloadType.Torrent)
+        {
+            return;
+        }
+
         await torrents.UpdatePriority(hash, 1);
     }
 
@@ -600,7 +607,7 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
     {
         var torrent = await torrents.GetByHash(hash);
 
-        if (torrent == null)
+        if (torrent == null || torrent.Type != DownloadType.Torrent)
         {
             return;
         }
@@ -620,7 +627,7 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
     {
         var torrent = await torrents.GetByHash(hash);
 
-        if (torrent == null)
+        if (torrent == null || torrent.Type != DownloadType.Torrent)
         {
             return;
         }

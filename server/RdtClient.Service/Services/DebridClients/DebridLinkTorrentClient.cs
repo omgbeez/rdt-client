@@ -137,7 +137,7 @@ public class DebridLinkClient(ILogger<DebridLinkClient> logger, IHttpClientFacto
         throw new NotSupportedException();
     }
 
-    public Task<String> AddNzbFile(Byte[] bytes)
+    public Task<String> AddNzbFile(Byte[] bytes, String? name)
     {
         throw new NotSupportedException();
     }

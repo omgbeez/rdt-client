@@ -231,9 +231,9 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         return result.Data!.Hash!;
     }
 
-    public async Task<String> AddNzbFile(Byte[] bytes)
+    public virtual async Task<String> AddNzbFile(Byte[] bytes, String? name)
     {
-        var result = await GetClient().Usenet.AddFileAsync(bytes);
+        var result = await GetClient().Usenet.AddFileAsync(bytes, name: name);
 
         return result.Data!.Hash!;
     }
@@ -295,7 +295,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         var zipped = segments[5] == "zip";
         var fileId = zipped ? "0" : segments[5];
 
-        Response<string> result;
+        Response<String> result;
 
         if (torrent.Type == DownloadType.Nzb)
         {
@@ -323,7 +323,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
                 return torrent;
             }
 
-            var rdTorrent = torrentClientTorrent ?? await GetInfo(torrent.Hash, torrent.Type) ?? throw new($"Resource not found");
+            var rdTorrent = torrentClientTorrent ?? await GetInfo(torrent.RdId, torrent.Type) ?? throw new($"Resource not found");
 
             if (!String.IsNullOrWhiteSpace(rdTorrent.Filename))
             {
@@ -407,8 +407,13 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
 
         if (torrent.Type == DownloadType.Nzb)
         {
+            if (torrent.RdId == null)
+            {
+                return null;
+            }
+
             var usenets = await GetClient().Usenet.GetCurrentAsync(true);
-            var usenet = usenets?.FirstOrDefault(m => m.Hash == torrent.Hash);
+            var usenet = usenets?.FirstOrDefault(m => m.Hash == torrent.RdId);
             id = (Int32?)usenet?.Id;
         }
         else
@@ -467,13 +472,11 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         return dateTimeOffset?.Subtract(_offset.Value).ToOffset(_offset.Value);
     }
 
-    private async Task<DebridClientTorrent?> GetInfo(String hash, DownloadType type)
+    private async Task<DebridClientTorrent?> GetInfo(String id, DownloadType type)
     {
         if (type == DownloadType.Nzb)
         {
-            var usenets = await GetClient().Usenet.GetCurrentAsync(true);
-            var usenet = usenets?.FirstOrDefault(m => m.Hash == hash);
-
+            var usenet = await GetClient().Usenet.GetHashInfoAsync(id, skipCache: true);
             if (usenet != null)
             {
                 return Map(usenet);
@@ -481,7 +484,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         }
         else
         {
-            var result = await GetClient().Torrents.GetHashInfoAsync(hash, skipCache: true);
+            var result = await GetClient().Torrents.GetHashInfoAsync(id, skipCache: true);
 
             if (result != null)
             {

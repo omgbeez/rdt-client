@@ -5,7 +5,6 @@ using Moq;
 using RdtClient.Data.Models.Data;
 using RdtClient.Service.Services;
 using RdtClient.Web.Controllers;
-using Xunit;
 
 namespace RdtClient.Web.Test.Controllers;
 
@@ -95,7 +94,7 @@ public class TorrentsControllerNzbTest
 
         // Assert
         Assert.IsType<OkResult>(result);
-        _torrentsMock.Verify(t => t.AddNzbFileToDebridQueue(It.IsAny<byte[]>(), formData.Torrent), Times.Once);
+        _torrentsMock.Verify(t => t.AddNzbFileToDebridQueue(It.IsAny<Byte[]>(), formData.Torrent), Times.Once);
         Assert.Equal(fileName, formData.Torrent.RdName);
     }
 

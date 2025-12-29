@@ -28,7 +28,11 @@ public class WatchFolderChecker(ILogger<WatchFolderChecker> logger, IServiceProv
         {
             try
             {
-                await Task.Delay(1000, stoppingToken);
+                if (_prevCheck != DateTime.MinValue)
+                {
+                    await Task.Delay(1000, stoppingToken);
+                }
+                _prevCheck = DateTime.Now.AddSeconds(Settings.Get.Watch.Interval);
 
                 if (String.IsNullOrWhiteSpace(Settings.Get.Watch.Path))
                 {
@@ -48,14 +52,6 @@ public class WatchFolderChecker(ILogger<WatchFolderChecker> logger, IServiceProv
                     errorStorePath = Settings.Get.Watch.ErrorPath;
                 }
 
-                var nextCheck = _prevCheck.AddSeconds(Settings.Get.Watch.Interval);
-
-                if (DateTime.UtcNow < nextCheck)
-                {
-                    continue;
-                }
-
-                _prevCheck = DateTime.UtcNow;
 
                 var torrentFiles = Directory.GetFiles(Settings.Get.Watch.Path, "*.*", SearchOption.TopDirectoryOnly);
 
@@ -63,7 +59,7 @@ public class WatchFolderChecker(ILogger<WatchFolderChecker> logger, IServiceProv
                 {
                     var fileInfo = new FileInfo(torrentFile);
 
-                    if (fileInfo.Extension != ".magnet" && fileInfo.Extension != ".torrent")
+                    if (fileInfo.Extension != ".magnet" && fileInfo.Extension != ".torrent" && fileInfo.Extension != ".nzb")
                     {
                         continue;
                     }
@@ -106,6 +102,11 @@ public class WatchFolderChecker(ILogger<WatchFolderChecker> logger, IServiceProv
                         {
                             var magnetLink = await File.ReadAllTextAsync(torrentFile, stoppingToken);
                             await torrentService.AddMagnetToDebridQueue(magnetLink, torrent);
+                        }
+                        else if (fileInfo.Extension == ".nzb")
+                        {
+                            var nzbFileContents = await File.ReadAllBytesAsync(torrentFile, stoppingToken);
+                            await torrentService.AddNzbFileToDebridQueue(nzbFileContents, torrent);
                         }
 
                         if (!Directory.Exists(processedStorePath))

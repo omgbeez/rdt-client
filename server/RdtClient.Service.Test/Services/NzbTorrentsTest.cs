@@ -3,9 +3,7 @@ using System.Text;
 using Moq;
 using RdtClient.Data.Enums;
 using RdtClient.Data.Models.Data;
-using RdtClient.Service.Services;
 using TorrentsService = RdtClient.Service.Services.Torrents;
-using Xunit;
 
 namespace RdtClient.Service.Test.Services;
 
@@ -41,13 +39,13 @@ public class NzbTorrentsTest
         var nzbLink = "http://example.com/test.nzb";
         var torrent = new Torrent
         {
-            DownloadClient = RdtClient.Data.Enums.DownloadClient.Bezzad
+            DownloadClient = DownloadClient.Bezzad
         };
 
-        _mocks.TorrentDataMock.Setup(t => t.GetByHash(It.IsAny<string>())).ReturnsAsync((Torrent)null!);
+        _mocks.TorrentDataMock.Setup(t => t.GetByHash(It.IsAny<String>())).ReturnsAsync((Torrent)null!);
         _mocks.TorrentDataMock.Setup(t => t.Add(
             null,
-            It.IsAny<string>(),
+            It.IsAny<String>(),
             nzbLink,
             false,
             DownloadType.Nzb,
@@ -64,7 +62,7 @@ public class NzbTorrentsTest
         Assert.Equal(TorrentStatus.Queued, torrent.RdStatus);
         _mocks.TorrentDataMock.Verify(t => t.Add(
             null,
-            It.IsAny<string>(),
+            It.IsAny<String>(),
             nzbLink,
             false,
             DownloadType.Nzb,
@@ -92,14 +90,14 @@ public class NzbTorrentsTest
         var bytes = Encoding.UTF8.GetBytes(nzbContent);
         var torrent = new Torrent
         {
-            DownloadClient = RdtClient.Data.Enums.DownloadClient.Bezzad
+            DownloadClient = DownloadClient.Bezzad
         };
 
-        _mocks.TorrentDataMock.Setup(t => t.GetByHash(It.IsAny<string>())).ReturnsAsync((Torrent)null!);
+        _mocks.TorrentDataMock.Setup(t => t.GetByHash(It.IsAny<String>())).ReturnsAsync((Torrent)null!);
         _mocks.TorrentDataMock.Setup(t => t.Add(
             null,
-            It.IsAny<string>(),
-            It.IsAny<string>(),
+            It.IsAny<String>(),
+            It.IsAny<String>(),
             true,
             DownloadType.Nzb,
             torrent.DownloadClient,
@@ -115,7 +113,7 @@ public class NzbTorrentsTest
         Assert.Equal(TorrentStatus.Queued, torrent.RdStatus);
         _mocks.TorrentDataMock.Verify(t => t.Add(
             null,
-            It.IsAny<string>(),
+            It.IsAny<String>(),
             Convert.ToBase64String(bytes),
             true,
             DownloadType.Nzb,
