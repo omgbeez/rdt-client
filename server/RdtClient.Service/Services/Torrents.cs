@@ -141,7 +141,11 @@ public class Torrents(
         try
         {
             using var stream = new MemoryStream(bytes);
-            var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit };
+            var settings = new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Ignore,
+                XmlResolver = null
+            };
             using var reader = XmlReader.Create(stream, settings);
             var doc = XDocument.Load(reader);
             var nzbNamespace = doc.Root?.GetDefaultNamespace() ?? XNamespace.None;
