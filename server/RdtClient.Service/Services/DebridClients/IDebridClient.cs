@@ -10,7 +10,7 @@ public interface IDebridClient
     Task<String> AddTorrentMagnet(String magnetLink);
     Task<String> AddTorrentFile(Byte[] bytes);
     Task<String> AddNzbLink(String nzbLink);
-    Task<String> AddNzbFile(Byte[] bytes);
+    Task<String> AddNzbFile(Byte[] bytes, String? name);
     Task<IList<DebridClientAvailableFile>> GetAvailableFiles(String hash);
     /// <summary>
     /// Tell the debrid provider which files to download.

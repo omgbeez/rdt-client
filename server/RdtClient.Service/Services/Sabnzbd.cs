@@ -34,7 +34,7 @@ public class Sabnzbd(ILogger<Sabnzbd> logger, Torrents torrents, AppSettings app
                     TorrentStatus.WaitingForFileSelection => "Propagating",
                     TorrentStatus.Error => "Failed",
                     TorrentStatus.Queued => "Queued",
-                    _ => ""
+                    _ => "Downloading"
                 },
                 Category = t.Category ?? "*",
                 Priority = "Normal",
@@ -50,18 +50,35 @@ public class Sabnzbd(ILogger<Sabnzbd> logger, Torrents torrents, AppSettings app
         var allTorrents = await torrents.Get();
         var completedTorrents = allTorrents.Where(t => t.Type == DownloadType.Nzb && t.Completed != null).ToList();
 
+        var savePath = Settings.AppDefaultSavePath;
+
         var history = new SabnzbdHistory
         {
             NoOfSlots = completedTorrents.Count,
             TotalSlots = completedTorrents.Count,
-            Slots = completedTorrents.Select(t => new SabnzbdHistorySlot
+            Slots = completedTorrents.Select(t =>
             {
-                NzoId = t.Hash,
-                Name = t.RdName ?? t.Hash,
-                Size = FileSizeHelper.FormatSize(t.Downloads.Sum(d => d.BytesTotal)),
-                Status = "Completed",
-                Category = t.Category ?? "Default",
-                Path = t.Category ?? "Default"
+                var path = savePath;
+
+                if (!String.IsNullOrWhiteSpace(t.Category))
+                {
+                    path = Path.Combine(path, t.Category);
+                }
+
+                if (!String.IsNullOrWhiteSpace(t.RdName))
+                {
+                    path = Path.Combine(path, t.RdName);
+                }
+
+                return new SabnzbdHistorySlot
+                {
+                    NzoId = t.Hash,
+                    Name = t.RdName ?? t.Hash,
+                    Size = FileSizeHelper.FormatSize(t.Downloads.Sum(d => d.BytesTotal)),
+                    Status = "Completed",
+                    Category = t.Category ?? "Default",
+                    Path = path
+                };
             }).ToList()
         };
 

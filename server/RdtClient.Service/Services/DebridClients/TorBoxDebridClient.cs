@@ -231,9 +231,9 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         return result.Data!.Hash!;
     }
 
-    public async Task<String> AddNzbFile(Byte[] bytes)
+    public virtual async Task<String> AddNzbFile(Byte[] bytes, String? name)
     {
-        var result = await GetClient().Usenet.AddFileAsync(bytes);
+        var result = await GetClient().Usenet.AddFileAsync(bytes, name: name);
 
         return result.Data!.Hash!;
     }

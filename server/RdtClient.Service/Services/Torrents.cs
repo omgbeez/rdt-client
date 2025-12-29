@@ -127,6 +127,9 @@ public class Torrents(
         var nzbHash = ComputeMd5Hash(nzbLink);
         var nzbNewTorrent = await AddQueued(nzbHash, nzbLink, false, DownloadType.Nzb, torrent);
         Log($"Adding {nzbLink} with hash {nzbHash} (nzb link) to queue");
+
+        await CopyAddedTorrent(nzbNewTorrent);
+
         return nzbNewTorrent;
     }
 
@@ -142,8 +145,17 @@ public class Torrents(
             var title = doc.Root?
                            .Elements(nzbNamespace + "head")
                            .Elements(nzbNamespace + "meta")
+                           .FirstOrDefault(x => x.Attribute("type")?.Value == "name")?
+                           .Value;
+
+            if (String.IsNullOrWhiteSpace(title))
+            {
+                title = doc.Root?
+                           .Elements(nzbNamespace + "head")
+                           .Elements(nzbNamespace + "meta")
                            .FirstOrDefault(x => x.Attribute("type")?.Value == "title")?
                            .Value;
+            }
 
             if (!String.IsNullOrWhiteSpace(title))
             {
@@ -160,6 +172,9 @@ public class Torrents(
         var nzbFileAsBase64 = Convert.ToBase64String(bytes);
         var nzbNewTorrent = await AddQueued(nzbHash, nzbFileAsBase64, true, DownloadType.Nzb, torrent);
         Log($"Adding {nzbHash} (nzb file) to queue", nzbNewTorrent);
+
+        await CopyAddedTorrent(nzbNewTorrent);
+
         return nzbNewTorrent;
     }
 
@@ -210,7 +225,7 @@ public class Torrents(
         var newTorrent = await AddQueued(hash, enriched, false, DownloadType.Torrent, torrent);
 
         Log($"Adding {hash} (magnet link) to queue", newTorrent);
-        await CopyAddedTorrent(magnet.Name!, magnetLink);
+        await CopyAddedTorrent(newTorrent);
 
         return newTorrent;
     }
@@ -283,50 +298,57 @@ public class Torrents(
 
         Log($"Adding {hash} (torrent file) to queue", newTorrent);
 
-        await CopyAddedTorrent(monoTorrent.Name, bytes);
+        await CopyAddedTorrent(newTorrent);
 
         return newTorrent;
     }
 
-    private async Task CopyAddedTorrent(String torrentName, Object fileOrMagnet)
+    private async Task CopyAddedTorrent(Torrent torrent)
     {
-        if (!String.IsNullOrWhiteSpace(Settings.Get.General.CopyAddedTorrents))
+        if (String.IsNullOrWhiteSpace(Settings.Get.General.CopyAddedTorrents) || String.IsNullOrWhiteSpace(torrent.FileOrMagnet) || String.IsNullOrWhiteSpace(torrent.RdName))
         {
-            try
+            return;
+        }
+
+        try
+        {
+            if (!fileSystem.Directory.Exists(Settings.Get.General.CopyAddedTorrents))
             {
-                if (!Directory.Exists(Settings.Get.General.CopyAddedTorrents))
-                {
-                    Directory.CreateDirectory(Settings.Get.General.CopyAddedTorrents);
-                }
-
-                var copyFileName = Path.Combine(Settings.Get.General.CopyAddedTorrents, FileHelper.RemoveInvalidFileNameChars(torrentName));
-
-                copyFileName = fileOrMagnet switch
-                {
-                    String => $"{copyFileName}.magnet",
-                    Byte[] => $"{copyFileName}.torrent",
-                    _ => throw new ArgumentException("Unexpected type for fileOrMagnet")
-                };
-
-                if (File.Exists(copyFileName))
-                {
-                    File.Delete(copyFileName);
-                }
-
-                switch (fileOrMagnet)
-                {
-                    case String magnetLink:
-                        await File.WriteAllTextAsync(copyFileName, magnetLink);
-                        break;
-                    case Byte[] torrentFile:
-                        await File.WriteAllBytesAsync(copyFileName, torrentFile);
-                        break;
-                }
+                fileSystem.Directory.CreateDirectory(Settings.Get.General.CopyAddedTorrents);
             }
-            catch (Exception ex)
+
+            var extension = torrent.Type switch
             {
-                logger.LogError(ex, $"Unable to create torrent blackhole directory: {Settings.Get.General.CopyAddedTorrents}: {ex.Message}");
+                DownloadType.Nzb => ".nzb",
+                DownloadType.Torrent => torrent.IsFile ? ".torrent" : ".magnet",
+                _ => throw new ArgumentException("Unexpected DownloadType")
+            };
+
+            var copyFileName = Path.Combine(Settings.Get.General.CopyAddedTorrents, FileHelper.RemoveInvalidFileNameChars(torrent.RdName));
+
+            if (!copyFileName.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+            {
+                copyFileName += extension;
             }
+
+            if (fileSystem.File.Exists(copyFileName))
+            {
+                fileSystem.File.Delete(copyFileName);
+            }
+
+            if (torrent.IsFile)
+            {
+                var bytes = Convert.FromBase64String(torrent.FileOrMagnet);
+                await fileSystem.File.WriteAllBytesAsync(copyFileName, bytes);
+            }
+            else
+            {
+                await fileSystem.File.WriteAllTextAsync(copyFileName, torrent.FileOrMagnet);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, $"Unable to create torrent blackhole directory: {Settings.Get.General.CopyAddedTorrents}: {ex.Message}");
         }
     }
 
@@ -359,7 +381,7 @@ public class Torrents(
             if (torrent.Type == DownloadType.Nzb)
             {
                 id = torrent.IsFile
-                    ? await DebridClient.AddNzbFile(Convert.FromBase64String(torrent.FileOrMagnet))
+                    ? await DebridClient.AddNzbFile(Convert.FromBase64String(torrent.FileOrMagnet), torrent.RdName)
                     : await DebridClient.AddNzbLink(torrent.FileOrMagnet);
             }
             else

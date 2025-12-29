@@ -244,7 +244,7 @@ public class TorBoxDebridClientTest
         clientMock.Protected().Setup<ITorBoxNetClient>("GetClient").Returns(torBoxClientMock.Object);
         
         usenetApiMock.Setup(m => m.RequestDownloadAsync(123, 456, false, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(new Response<string> { Data = "https://unrestricted-link-nzb" });
+                     .ReturnsAsync(new Response<String> { Data = "https://unrestricted-link-nzb" });
 
         // Act
         var result = await clientMock.Object.Unrestrict(torrent, link);
@@ -252,5 +252,29 @@ public class TorBoxDebridClientTest
         // Assert
         Assert.Equal("https://unrestricted-link-nzb", result);
         usenetApiMock.Verify(m => m.RequestDownloadAsync(123, 456, false, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AddNzbFile_CallsUsenetAddFileAsyncWithName()
+    {
+        // Arrange
+        var bytes = new Byte[] { 1, 2, 3 };
+        var name = "test-nzb";
+        var usenetApiMock = new Mock<IUsenetApi>();
+        var clientMock = new Mock<TorBoxDebridClient>(_loggerMock.Object, _httpClientFactoryMock.Object, _fileFilterMock.Object) { CallBase = true };
+        var torBoxClientMock = new Mock<ITorBoxNetClient>();
+        
+        torBoxClientMock.Setup(m => m.Usenet).Returns(usenetApiMock.Object);
+        clientMock.Protected().Setup<ITorBoxNetClient>("GetClient").Returns(torBoxClientMock.Object);
+        
+        usenetApiMock.Setup(m => m.AddFileAsync(bytes, -1, name, null, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(new Response<UsenetAddResult> { Data = new UsenetAddResult { Hash = "new-hash" } });
+
+        // Act
+        var result = await clientMock.Object.AddNzbFile(bytes, name);
+
+        // Assert
+        Assert.Equal("new-hash", result);
+        usenetApiMock.Verify(m => m.AddFileAsync(bytes, -1, name, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

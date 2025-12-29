@@ -125,6 +125,72 @@ public class SabnzbdTest
     }
 
     [Fact]
+    public async Task GetHistory_ShouldReturnFullPath()
+    {
+        // Arrange
+        var savePath = @"C:\Downloads";
+        Data.Data.SettingData.Get.DownloadClient.MappedPath = savePath;
+
+        var torrentList = new List<Torrent>
+        {
+            new()
+            {
+                Hash = "hash1",
+                RdName = "NZB 1",
+                Category = "radarr",
+                Type = DownloadType.Nzb,
+                Completed = DateTimeOffset.UtcNow,
+                Downloads = new List<Download>()
+            }
+        };
+
+        _torrentsMock.Setup(t => t.Get()).ReturnsAsync(torrentList);
+
+        var sabnzbd = new Sabnzbd(_loggerMock.Object, _torrentsMock.Object, _appSettings);
+
+        // Act
+        var result = await sabnzbd.GetHistory();
+
+        // Assert
+        Assert.Single(result.Slots);
+        var expectedPath = Path.Combine(savePath, "radarr", "NZB 1");
+        Assert.Equal(expectedPath, result.Slots[0].Path);
+    }
+
+    [Fact]
+    public async Task GetHistory_ShouldReturnFullPath_NoCategory()
+    {
+        // Arrange
+        var savePath = @"C:\Downloads";
+        Data.Data.SettingData.Get.DownloadClient.MappedPath = savePath;
+
+        var torrentList = new List<Torrent>
+        {
+            new()
+            {
+                Hash = "hash1",
+                RdName = "NZB 1",
+                Category = null,
+                Type = DownloadType.Nzb,
+                Completed = DateTimeOffset.UtcNow,
+                Downloads = new List<Download>()
+            }
+        };
+
+        _torrentsMock.Setup(t => t.Get()).ReturnsAsync(torrentList);
+
+        var sabnzbd = new Sabnzbd(_loggerMock.Object, _torrentsMock.Object, _appSettings);
+
+        // Act
+        var result = await sabnzbd.GetHistory();
+
+        // Assert
+        Assert.Single(result.Slots);
+        var expectedPath = Path.Combine(savePath, "NZB 1");
+        Assert.Equal(expectedPath, result.Slots[0].Path);
+    }
+
+    [Fact]
     public void GetConfig_ShouldReturnCorrectConfig()
     {
         // Arrange

@@ -19,7 +19,6 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
     public async Task AuthLogout()
     {
         logger.LogDebug("Auth logout");
-
         await authentication.Logout();
     }
 
