@@ -249,7 +249,7 @@ public class SabnzbdControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<SabnzbdResponse>(okResult.Value);
         Assert.True(response.Status);
-        Assert.Contains("nzo_id_123", response.NzoIds);
+        Assert.Contains("nzo_id_123", response.NzoIds!);
         _sabnzbdMock.Verify(s => s.AddFile(It.IsAny<Byte[]>(), "radarr", -100), Times.Once);
     }
 }

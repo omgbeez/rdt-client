@@ -199,12 +199,6 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
 
         var result = await GetClient().Torrents.AddMagnetAsync(magnetLink, user.Data?.Settings?.SeedTorrents ?? 3, false);
 
-        if (result.Error == "ACTIVE_LIMIT")
-        {
-            var magnetLinkInfo = MonoTorrent.MagnetLink.Parse(magnetLink);
-            return magnetLinkInfo.InfoHashes.V1!.ToHex().ToLowerInvariant();
-        }
-
         return result.Data!.Hash!;
     }
 
@@ -213,13 +207,6 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         var user = await GetClient().User.GetAsync(true);
 
         var result = await GetClient().Torrents.AddFileAsync(bytes, user.Data?.Settings?.SeedTorrents ?? 3);
-        if (result.Error == "ACTIVE_LIMIT")
-        {
-            using var stream = new MemoryStream(bytes);
-
-            var torrent = await MonoTorrent.Torrent.LoadAsync(stream);
-            return torrent.InfoHashes.V1!.ToHex().ToLowerInvariant();
-        }
 
         return result.Data!.Hash!;
     }
