@@ -154,7 +154,7 @@ public class TorrentsController(ILogger<TorrentsController> logger, Torrents tor
 
         var bytes = memoryStream.ToArray();
 
-        await torrents.AddNzbFileToDebridQueue(bytes, formData.Torrent);
+        await torrents.AddNzbFileToDebridQueue(bytes, file.FileName, formData.Torrent);
 
         return Ok();
     }

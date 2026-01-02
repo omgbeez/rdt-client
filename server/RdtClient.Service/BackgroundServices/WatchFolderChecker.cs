@@ -108,7 +108,7 @@ public class WatchFolderChecker(ILogger<WatchFolderChecker> logger, IServiceProv
                         else if (fileInfo.Extension == ".nzb")
                         {
                             var nzbFileContents = await File.ReadAllBytesAsync(torrentFile, stoppingToken);
-                            await torrentService.AddNzbFileToDebridQueue(nzbFileContents, torrent);
+                            await torrentService.AddNzbFileToDebridQueue(nzbFileContents, fileInfo.Name, torrent);
                         }
 
                         if (!Directory.Exists(processedStorePath))
