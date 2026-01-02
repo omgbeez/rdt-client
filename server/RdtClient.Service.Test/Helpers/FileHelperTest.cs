@@ -9,7 +9,7 @@ public class FileHelperTest
     {
         // Arrange
         var invalidChars = Path.GetInvalidFileNameChars();
-        var input = "test" + new string(invalidChars) + "file.txt";
+        var input = "test" + new String(invalidChars) + "file.txt";
 
         // Act
         var result = FileHelper.RemoveInvalidFileNameChars(input);
@@ -90,7 +90,7 @@ public class FileHelperTest
     [InlineData("test/../file.txt", "testfile.txt")]
     [InlineData(".../test.txt", ".test.txt")]
     [InlineData("test....txt", "testtxt")]
-    public void RemoveInvalidFileNameChars_ComplexCases(string input, string expected)
+    public void RemoveInvalidFileNameChars_ComplexCases(String input, String expected)
     {
         // Act
         var result = FileHelper.RemoveInvalidFileNameChars(input);
