@@ -90,17 +90,19 @@ public class TorrentsController(ILogger<TorrentsController> logger, Torrents tor
     {
         var torrent = await torrents.GetById(torrentId);
 
-        if (torrent?.Downloads != null)
+        if (torrent == null)
         {
-            foreach (var file in torrent.Downloads)
-            {
-                file.Torrent = null;
-            }
+            return NotFound();
+        }
+
+        foreach (var file in torrent.Downloads)
+        {
+            file.Torrent = null;
         }
 
         var torrentDto = new TorrentDto
         {
-            TorrentId = torrent.TorrentId,
+            TorrentId = torrent!.TorrentId,
             Hash = torrent.Hash,
             Category = torrent.Category,
             DownloadAction = torrent.DownloadAction,
@@ -137,7 +139,7 @@ public class TorrentsController(ILogger<TorrentsController> logger, Torrents tor
             RdSpeed = torrent.RdSpeed,
             RdSeeders = torrent.RdSeeders,
             Files = torrent.Files,
-            Downloads = torrent.Downloads.Select(download => new DownloadDto
+            Downloads = (torrent.Downloads).Select(download => new DownloadDto
             {
                 DownloadId = download.DownloadId,
                 TorrentId = download.TorrentId,
