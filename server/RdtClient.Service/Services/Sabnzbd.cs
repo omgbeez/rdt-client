@@ -133,7 +133,7 @@ public class Sabnzbd(ILogger<Sabnzbd> logger, Torrents torrents, AppSettings app
             DownloadRetryAttempts = Settings.Get.Integrations.Default.DownloadRetryAttempts,
             DeleteOnError = Settings.Get.Integrations.Default.DeleteOnError,
             Lifetime = Settings.Get.Integrations.Default.TorrentLifetime,
-            Priority = priority ?? (Settings.Get.Integrations.Default.Priority > 0 ? Settings.Get.Integrations.Default.Priority : null)
+            Priority = (priority ?? Settings.Get.Integrations.Default.Priority) > 0 ? 1 : null
         };
 
         var result = await torrents.AddNzbFileToDebridQueue(fileBytes, torrent);
