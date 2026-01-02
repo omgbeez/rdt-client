@@ -161,7 +161,7 @@ public class WatchFolderCheckerTests : IDisposable
         var cts = new CancellationTokenSource();
 
         _torrentsServiceMock
-            .Setup(x => x.AddNzbFileToDebridQueue(It.IsAny<Byte[]>(), It.IsAny<Torrent>()))
+            .Setup(x => x.AddNzbFileToDebridQueue(It.IsAny<Byte[]>(), It.IsAny<String>(), It.IsAny<Torrent>()))
             .ReturnsAsync(new Torrent());
 
         // Act
@@ -173,6 +173,7 @@ public class WatchFolderCheckerTests : IDisposable
         // Assert
         _torrentsServiceMock.Verify(x => x.AddNzbFileToDebridQueue(
             It.Is<Byte[]>(b => b.SequenceEqual(content)),
+            "test.nzb",
             It.IsAny<Torrent>()), Times.AtLeastOnce);
         
         Assert.False(File.Exists(filePath));
@@ -200,7 +201,7 @@ public class WatchFolderCheckerTests : IDisposable
         // Assert
         _torrentsServiceMock.Verify(x => x.AddFileToDebridQueue(It.IsAny<Byte[]>(), It.IsAny<Torrent>()), Times.Never);
         _torrentsServiceMock.Verify(x => x.AddMagnetToDebridQueue(It.IsAny<String>(), It.IsAny<Torrent>()), Times.Never);
-        _torrentsServiceMock.Verify(x => x.AddNzbFileToDebridQueue(It.IsAny<Byte[]>(), It.IsAny<Torrent>()), Times.Never);
+        _torrentsServiceMock.Verify(x => x.AddNzbFileToDebridQueue(It.IsAny<Byte[]>(), It.IsAny<String>(), It.IsAny<Torrent>()), Times.Never);
         
         Assert.True(File.Exists(filePath));
     }

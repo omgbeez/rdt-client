@@ -105,7 +105,7 @@ public class NzbTorrentsTest
         )).ReturnsAsync(new Torrent { Hash = "mockHash", RdName = "Test NZB Title" });
 
         // Act
-        var result = await _torrents.AddNzbFileToDebridQueue(bytes, torrent);
+        var result = await _torrents.AddNzbFileToDebridQueue(bytes, "filename.nzb", torrent);
 
         // Assert
         Assert.NotNull(result);
@@ -130,6 +130,6 @@ public class NzbTorrentsTest
         var torrent = new Torrent();
 
         // Act & Assert
-        await Assert.ThrowsAsync<Exception>(() => _torrents.AddNzbFileToDebridQueue(bytes, torrent));
+        await Assert.ThrowsAsync<Exception>(() => _torrents.AddNzbFileToDebridQueue(bytes, "filename.nzb", torrent));
     }
 }

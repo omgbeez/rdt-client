@@ -114,7 +114,7 @@ public class Sabnzbd(ILogger<Sabnzbd> logger, Torrents torrents, AppSettings app
         return history;
     }
 
-    public virtual async Task<String> AddFile(Byte[] fileBytes, String? category, Int32? priority)
+    public virtual async Task<String> AddFile(Byte[] fileBytes, String? fileName, String? category, Int32? priority)
     {
         logger.LogDebug($"Add file {category}");
 
@@ -136,7 +136,7 @@ public class Sabnzbd(ILogger<Sabnzbd> logger, Torrents torrents, AppSettings app
             Priority = (priority ?? Settings.Get.Integrations.Default.Priority) > 0 ? 1 : null
         };
 
-        var result = await torrents.AddNzbFileToDebridQueue(fileBytes, torrent);
+        var result = await torrents.AddNzbFileToDebridQueue(fileBytes, fileName, torrent);
         return result.Hash;
     }
 

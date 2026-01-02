@@ -353,7 +353,7 @@ public class TorrentsTest
                                            null!);
 
         // Act
-        await torrents.AddNzbFileToDebridQueue(bytes, torrent);
+        await torrents.AddNzbFileToDebridQueue(bytes, "filename.nzb", torrent);
 
         // Assert
         mocks.TorrentDataMock.Verify(t => t.Add(null,

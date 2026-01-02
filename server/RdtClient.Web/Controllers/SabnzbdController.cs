@@ -126,7 +126,7 @@ public class SabnzbdController(ILogger<SabnzbdController> logger, Sabnzbd sabnzb
 
         using var ms = new MemoryStream();
         await file.CopyToAsync(ms);
-        var result = await sabnzbd.AddFile(ms.ToArray(), category, priority);
+        var result = await sabnzbd.AddFile(ms.ToArray(), file.FileName, category, priority);
         
         return Ok(new SabnzbdResponse { Status = true, NzoIds = [result] });
     }

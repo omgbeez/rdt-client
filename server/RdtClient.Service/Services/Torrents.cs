@@ -134,9 +134,9 @@ public class Torrents(
         return nzbNewTorrent;
     }
 
-    public virtual async Task<Torrent> AddNzbFileToDebridQueue(Byte[] bytes, Torrent torrent)
+    public virtual async Task<Torrent> AddNzbFileToDebridQueue(Byte[] bytes, String? fileName, Torrent torrent)
     {
-        torrent.RdName = "Unknown NZB";
+        torrent.RdName = fileName ?? "Unknown NZB";
         torrent.RdStatus = TorrentStatus.Queued;
         try
         {
@@ -764,7 +764,7 @@ public class Torrents(
                 {
                     var bytes = Convert.FromBase64String(torrent.FileOrMagnet!);
 
-                    newTorrent = await AddNzbFileToDebridQueue(bytes, torrent);
+                    newTorrent = await AddNzbFileToDebridQueue(bytes, torrent.RdName, torrent);
                 }
                 else
                 {

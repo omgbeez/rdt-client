@@ -240,7 +240,7 @@ public class SabnzbdControllerTest
         httpContext.Request.Form = new FormCollection(new Dictionary<String, Microsoft.Extensions.Primitives.StringValues>(), new FormFileCollection { fileMock.Object });
         
         _controller.ControllerContext.HttpContext = httpContext;
-        _sabnzbdMock.Setup(s => s.AddFile(It.IsAny<Byte[]>(), "radarr", -100)).ReturnsAsync("nzo_id_123");
+        _sabnzbdMock.Setup(s => s.AddFile(It.IsAny<Byte[]>(), fileName, "radarr", -100)).ReturnsAsync("nzo_id_123");
 
         // Act
         var result = await _controller.AddFile();
@@ -250,6 +250,6 @@ public class SabnzbdControllerTest
         var response = Assert.IsType<SabnzbdResponse>(okResult.Value);
         Assert.True(response.Status);
         Assert.Contains("nzo_id_123", response.NzoIds);
-        _sabnzbdMock.Verify(s => s.AddFile(It.IsAny<Byte[]>(), "radarr", -100), Times.Once);
+        _sabnzbdMock.Verify(s => s.AddFile(It.IsAny<Byte[]>(), fileName, "radarr", -100), Times.Once);
     }
 }

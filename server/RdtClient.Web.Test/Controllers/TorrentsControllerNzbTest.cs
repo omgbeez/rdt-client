@@ -94,7 +94,7 @@ public class TorrentsControllerNzbTest
 
         // Assert
         Assert.IsType<OkResult>(result);
-        _torrentsMock.Verify(t => t.AddNzbFileToDebridQueue(It.IsAny<Byte[]>(), formData.Torrent), Times.Once);
+        _torrentsMock.Verify(t => t.AddNzbFileToDebridQueue(It.IsAny<Byte[]>(), fileName, formData.Torrent), Times.Once);
         Assert.Equal(fileName, formData.Torrent.RdName);
     }
 
