@@ -1,10 +1,7 @@
 ﻿using System.IO.Abstractions;
-using System.Net;
-using System.Net.Http.Headers;
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Http.Resilience;
 using Polly;
 using RdtClient.Service.BackgroundServices;
 using RdtClient.Service.Middleware;
