@@ -1,8 +1,10 @@
 ﻿using System.IO.Abstractions;
+using System.Net;
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Polly;
+using RateLimitHeaders.Polly;
 using RdtClient.Service.BackgroundServices;
 using RdtClient.Service.Middleware;
 using RdtClient.Service.Services;
@@ -68,35 +70,23 @@ public static class DiConfig
         });
 
         services.AddHttpClient(RD_CLIENT)
-            .AddStandardResilienceHandler(options =>
-            {
-                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(10);
-                options.Retry.MaxRetryAttempts = 5;
-                options.Retry.BackoffType = DelayBackoffType.Exponential;
-                options.Retry.UseJitter = true;
-                options.Retry.Delay = TimeSpan.FromSeconds(2);
-                options.Retry.DelayGenerator = args =>
+                .AddResilienceHandler("rd_client_handler", builder =>
                 {
-                    // Check if we have a result and if it contains the Retry-After header
-                    if (args.Outcome.Result is { } response && response.Headers.RetryAfter is { } retryAfter)
+                    builder.AddRateLimitHeaders(options => options.EnableProactiveThrottling = true);
+                    builder.AddRetry(new()
                     {
-                        // The header can be either a specific date or a delay in seconds
-                        if (retryAfter.Delta.HasValue)
+                        ShouldHandle = args => args.Outcome switch
                         {
-                            return ValueTask.FromResult<TimeSpan?>(retryAfter.Delta.Value);
-                        }
-
-                        if (retryAfter.Date.HasValue)
-                        {
-                            var delay = retryAfter.Date.Value - DateTimeOffset.UtcNow;
-
-                            return ValueTask.FromResult<TimeSpan?>(delay > TimeSpan.Zero ? delay : TimeSpan.Zero);
-                        }
-                    }
-
-                    // Return null to let Polly use the default BackoffType/Delay specified above
-                    return ValueTask.FromResult<TimeSpan?>(null);
-                };
-            });
+                            { Exception: HttpRequestException } => PredicateResult.True(),
+                            { Result.StatusCode: HttpStatusCode.RequestTimeout } => PredicateResult.True(),
+                            { Result.StatusCode: >= HttpStatusCode.InternalServerError } => PredicateResult.True(),
+                            _ => PredicateResult.False()
+                        },
+                        MaxRetryAttempts = 5,
+                        BackoffType = DelayBackoffType.Exponential,
+                        Delay = TimeSpan.FromSeconds(2),
+                        UseJitter = true
+                    });
+                });
     }
 }
