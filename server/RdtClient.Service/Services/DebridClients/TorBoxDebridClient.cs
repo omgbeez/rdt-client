@@ -211,7 +211,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         }
     }
 
-    private async Task<String> AddNzbRetry(Func<Int32, Task<String>> action)
+    private async Task<String> AddNzbRetry(Func<Boolean, Task<String>> action)
     {
         try
         {
@@ -233,7 +233,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         return await AddTorrentRetry(async asQueued =>
         {
             var user = await GetClient().User.GetAsync(true);
-            var result = await GetClient().Torrents.AddMagnetAsync(magnetLink, user.Data?.Settings?.SeedTorrents ?? 3, asQueued);
+            var result = await GetClient().Torrents.AddMagnetAsync(magnetLink, user.Data?.Settings?.SeedTorrents ?? 3, as_queued: asQueued);
             return result.Data!.Hash!;
         });
     }
@@ -243,7 +243,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         return await AddTorrentRetry(async asQueued =>
         {
             var user = await GetClient().User.GetAsync(true);
-            var result = await GetClient().Torrents.AddFileAsync(bytes, user.Data?.Settings?.SeedTorrents ?? 3, asQueued);
+            var result = await GetClient().Torrents.AddFileAsync(bytes, user.Data?.Settings?.SeedTorrents ?? 3, as_queued: asQueued);
             return result.Data!.Hash!;
         });
     }
@@ -252,7 +252,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
     {
         return await AddNzbRetry(async asQueued =>
         {
-            var result = await GetClient().Usenet.AddLinkAsync(nzbLink, asQueued);
+            var result = await GetClient().Usenet.AddLinkAsync(nzbLink, as_queued: asQueued);
             return result.Data!.Hash!;
         });
     }
@@ -261,7 +261,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
     {
         return await AddNzbRetry(async asQueued =>
         {
-            var result = await GetClient().Usenet.AddFileAsync(bytes, asQueued, name);
+            var result = await GetClient().Usenet.AddFileAsync(bytes, name: name, as_queued: asQueued);
             return result.Data!.Hash!;
         });
     }
