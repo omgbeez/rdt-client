@@ -5,6 +5,7 @@ using TorBoxNET;
 using RdtClient.Data.Enums;
 using RdtClient.Data.Models.DebridClient;
 using RdtClient.Data.Models.Data;
+using RdtClient.Data.Models.Internal;
 using RdtClient.Service.Helpers;
 
 namespace RdtClient.Service.Services.DebridClients;
@@ -193,36 +194,76 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         };
     }
 
+    private async Task<String> AddTorrentRetry(Func<Boolean, Task<String>> action)
+    {
+        try
+        {
+            return await action(false);
+        }
+        catch (Exception ex) when (ex.Message.Contains("active_limit", StringComparison.OrdinalIgnoreCase))
+        {
+            return await action(true);
+        }
+        catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
+                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
+        }
+    }
+
+    private async Task<String> AddNzbRetry(Func<Boolean, Task<String>> action)
+    {
+        try
+        {
+            return await action(false);
+        }
+        catch (Exception ex) when (ex.Message.Contains("active_limit", StringComparison.OrdinalIgnoreCase))
+        {
+            return await action(true); 
+        }
+        catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
+                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
+        }
+    }
+
     public async Task<String> AddTorrentMagnet(String magnetLink)
     {
-        var user = await GetClient().User.GetAsync(true);
-
-        var result = await GetClient().Torrents.AddMagnetAsync(magnetLink, user.Data?.Settings?.SeedTorrents ?? 3, false);
-
-        return result.Data!.Hash!;
+        return await AddTorrentRetry(async asQueued =>
+        {
+            var user = await GetClient().User.GetAsync(true);
+            var result = await GetClient().Torrents.AddMagnetAsync(magnetLink, user.Data?.Settings?.SeedTorrents ?? 3, as_queued: asQueued);
+            return result.Data!.Hash!;
+        });
     }
 
     public async Task<String> AddTorrentFile(Byte[] bytes)
     {
-        var user = await GetClient().User.GetAsync(true);
-
-        var result = await GetClient().Torrents.AddFileAsync(bytes, user.Data?.Settings?.SeedTorrents ?? 3);
-
-        return result.Data!.Hash!;
+        return await AddTorrentRetry(async asQueued =>
+        {
+            var user = await GetClient().User.GetAsync(true);
+            var result = await GetClient().Torrents.AddFileAsync(bytes, user.Data?.Settings?.SeedTorrents ?? 3, as_queued: asQueued);
+            return result.Data!.Hash!;
+        });
     }
 
     public async Task<String> AddNzbLink(String nzbLink)
     {
-        var result = await GetClient().Usenet.AddLinkAsync(nzbLink);
-
-        return result.Data!.Hash!;
+        return await AddNzbRetry(async asQueued =>
+        {
+            var result = await GetClient().Usenet.AddLinkAsync(nzbLink, as_queued: asQueued);
+            return result.Data!.Hash!;
+        });
     }
 
     public virtual async Task<String> AddNzbFile(Byte[] bytes, String? name)
     {
-        var result = await GetClient().Usenet.AddFileAsync(bytes, name: name);
-
-        return result.Data!.Hash!;
+        return await AddNzbRetry(async asQueued =>
+        {
+            var result = await GetClient().Usenet.AddFileAsync(bytes, name: name, as_queued: asQueued);
+            return result.Data!.Hash!;
+        });
     }
 
     public async Task<IList<DebridClientAvailableFile>> GetAvailableFiles(String hash)

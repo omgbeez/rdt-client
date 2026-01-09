@@ -269,7 +269,7 @@ public class TorBoxDebridClientTest
         torBoxClientMock.Setup(m => m.Usenet).Returns(usenetApiMock.Object);
         clientMock.Protected().Setup<ITorBoxNetClient>("GetClient").Returns(torBoxClientMock.Object);
         
-        usenetApiMock.Setup(m => m.AddFileAsync(bytes, -1, name, null, It.IsAny<CancellationToken>()))
+        usenetApiMock.Setup(m => m.AddFileAsync(bytes, It.IsAny<Int32>(), name, null, false, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(new Response<UsenetAddResult> { Data = new UsenetAddResult { Hash = "new-hash" } });
 
         // Act
@@ -277,7 +277,7 @@ public class TorBoxDebridClientTest
 
         // Assert
         Assert.Equal("new-hash", result);
-        usenetApiMock.Verify(m => m.AddFileAsync(bytes, -1, name, null, It.IsAny<CancellationToken>()), Times.Once);
+        usenetApiMock.Verify(m => m.AddFileAsync(bytes, It.IsAny<Int32>(), name, null, false, It.IsAny<CancellationToken>()), Times.Once);
     }
     [Fact]
     public async Task GetDownloadInfos_GeneratesCorrectFakedlLinks_ForIndividualFiles()
