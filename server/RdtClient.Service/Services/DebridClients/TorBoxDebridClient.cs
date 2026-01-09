@@ -200,12 +200,9 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         {
             return await action(false);
         }
-        catch (Exception ex) when (ex.Message.Contains("active_limit", StringComparison.OrdinalIgnoreCase))
-        {
-            return await action(true);
-        }
         catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
-                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
+                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase) ||
+                                   ex.Message.Contains("active_limit", StringComparison.OrdinalIgnoreCase))
         {
             throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
         }
@@ -217,12 +214,9 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         {
             return await action(false);
         }
-        catch (Exception ex) when (ex.Message.Contains("active_limit", StringComparison.OrdinalIgnoreCase))
-        {
-            return await action(true); 
-        }
         catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
-                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
+                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase) ||
+                                   ex.Message.Contains("active_limit", StringComparison.OrdinalIgnoreCase))
         {
             throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
         }
