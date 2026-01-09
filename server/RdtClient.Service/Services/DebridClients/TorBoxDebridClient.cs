@@ -194,68 +194,76 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         };
     }
 
-    public async Task<String> AddTorrentMagnet(String magnetLink)
+    private async Task<String> AddTorrentRetry(Func<Boolean, Task<String>> action)
     {
         try
         {
-            var user = await GetClient().User.GetAsync(true);
-
-            var result = await GetClient().Torrents.AddMagnetAsync(magnetLink, user.Data?.Settings?.SeedTorrents ?? 3, false);
-
-            return result.Data!.Hash!;
+            return await action(false);
+        }
+        catch (Exception ex) when (ex.Message.Contains("active_limit", StringComparison.OrdinalIgnoreCase))
+        {
+            return await action(true);
         }
         catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
-                           ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
+                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
         {
             throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
         }
+    }
+
+    private async Task<String> AddNzbRetry(Func<Boolean, Task<String>> action)
+    {
+        try
+        {
+            return await action(false);
+        }
+        catch (Exception ex) when (ex.Message.Contains("active_limit", StringComparison.OrdinalIgnoreCase))
+        {
+            return await action(true); 
+        }
+        catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
+                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
+        }
+    }
+
+    public async Task<String> AddTorrentMagnet(String magnetLink)
+    {
+        return await AddTorrentRetry(async asQueued =>
+        {
+            var user = await GetClient().User.GetAsync(true);
+            var result = await GetClient().Torrents.AddMagnetAsync(magnetLink, user.Data?.Settings?.SeedTorrents ?? 3, as_queued: asQueued);
+            return result.Data!.Hash!;
+        });
     }
 
     public async Task<String> AddTorrentFile(Byte[] bytes)
     {
-        try
+        return await AddTorrentRetry(async asQueued =>
         {
             var user = await GetClient().User.GetAsync(true);
-
-            var result = await GetClient().Torrents.AddFileAsync(bytes, user.Data?.Settings?.SeedTorrents ?? 3);
-
+            var result = await GetClient().Torrents.AddFileAsync(bytes, user.Data?.Settings?.SeedTorrents ?? 3, as_queued: asQueued);
             return result.Data!.Hash!;
-        }
-        catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
-                           ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
-        }
+        });
     }
 
     public async Task<String> AddNzbLink(String nzbLink)
     {
-        try
+        return await AddNzbRetry(async asQueued =>
         {
-            var result = await GetClient().Usenet.AddLinkAsync(nzbLink);
-
+            var result = await GetClient().Usenet.AddLinkAsync(nzbLink, as_queued: asQueued);
             return result.Data!.Hash!;
-        }
-        catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
-                           ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
-        }
+        });
     }
 
     public virtual async Task<String> AddNzbFile(Byte[] bytes, String? name)
     {
-        try
+        return await AddNzbRetry(async asQueued =>
         {
-            var result = await GetClient().Usenet.AddFileAsync(bytes, name: name);
-
+            var result = await GetClient().Usenet.AddFileAsync(bytes, name: name, as_queued: asQueued);
             return result.Data!.Hash!;
-        }
-        catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
-                           ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
-        }
+        });
     }
 
     public async Task<IList<DebridClientAvailableFile>> GetAvailableFiles(String hash)
