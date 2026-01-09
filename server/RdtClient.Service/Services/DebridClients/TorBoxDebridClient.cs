@@ -215,11 +215,11 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
     {
         try
         {
-            return await action(0);
+            return await action(false);
         }
         catch (Exception ex) when (ex.Message.Contains("active_limit", StringComparison.OrdinalIgnoreCase))
         {
-            return await action(1);
+            return await action(true); 
         }
         catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
                                    ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
