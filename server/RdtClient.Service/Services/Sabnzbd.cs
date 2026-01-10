@@ -30,13 +30,11 @@ public class Sabnzbd(ILogger<Sabnzbd> logger, Torrents torrents, AppSettings app
                 }
 
                 var progress = (rdProgress + downloadProgress) / 2.0;
-
                 var timeLeft = "0:00:00";
-                var startTime = t.Retry > t.Added ? t.Retry.Value : t.Added;
-                var elapsed = DateTimeOffset.UtcNow - startTime;
-
                 if (progress > 0 && progress < 1.0)
                 {
+                    var startTime = t.Retry > t.Added ? t.Retry.Value : t.Added;
+                    var elapsed = DateTimeOffset.UtcNow - startTime;
                     var totalEstimatedTime = TimeSpan.FromTicks((Int64)(elapsed.Ticks / progress));
                     var remaining = totalEstimatedTime - elapsed;
                     if (remaining.TotalSeconds > 0)
@@ -56,12 +54,13 @@ public class Sabnzbd(ILogger<Sabnzbd> logger, Torrents torrents, AppSettings app
 
                     Status = t.RdStatus switch
                     {
-                        TorrentStatus.Processing => "Propagating",
-                        TorrentStatus.Finished => "Completed",
-                        TorrentStatus.Downloading => "Downloading",
-                        TorrentStatus.WaitingForFileSelection => "Propagating",
-                        TorrentStatus.Error => "Failed",
                         TorrentStatus.Queued => "Queued",
+                        TorrentStatus.Processing => "Downloading",
+                        TorrentStatus.WaitingForFileSelection => "Downloading",
+                        TorrentStatus.Downloading => "Downloading",
+                        TorrentStatus.Uploading => "Downloading",
+                        TorrentStatus.Finished => "Completed",
+                        TorrentStatus.Error => "Failed",
                         _ => "Downloading"
                     },
                     Category = t.Category ?? "*",
