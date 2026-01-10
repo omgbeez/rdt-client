@@ -194,29 +194,35 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         };
     }
 
-    private async Task<String> AddTorrentRetry(Func<Boolean, Task<String>> action)
+    private async Task<String> HandleAddTorrentErrors(Func<Boolean, Task<String>> action)
     {
         try
         {
             return await action(false);
         }
+        catch (TorBoxException ex) when (ex.Error.Equals("active_limit", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
+        }
         catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
-                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase) ||
-                                   ex.Message.Contains("active_limit", StringComparison.OrdinalIgnoreCase))
+                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
         {
             throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
         }
     }
 
-    private async Task<String> AddNzbRetry(Func<Boolean, Task<String>> action)
+    private async Task<String> HandleAddUsenetErrors(Func<Boolean, Task<String>> action)
     {
         try
         {
             return await action(false);
         }
+        catch (TorBoxException ex) when (ex.Error.Equals("active_limit", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
+        }
         catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
-                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase) ||
-                                   ex.Message.Contains("active_limit", StringComparison.OrdinalIgnoreCase))
+                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
         {
             throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
         }
@@ -224,7 +230,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
 
     public async Task<String> AddTorrentMagnet(String magnetLink)
     {
-        return await AddTorrentRetry(async asQueued =>
+        return await HandleAddTorrentErrors(async asQueued =>
         {
             var user = await GetClient().User.GetAsync(true);
             var result = await GetClient().Torrents.AddMagnetAsync(magnetLink, user.Data?.Settings?.SeedTorrents ?? 3, as_queued: asQueued);
@@ -234,7 +240,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
 
     public async Task<String> AddTorrentFile(Byte[] bytes)
     {
-        return await AddTorrentRetry(async asQueued =>
+        return await HandleAddTorrentErrors(async asQueued =>
         {
             var user = await GetClient().User.GetAsync(true);
             var result = await GetClient().Torrents.AddFileAsync(bytes, user.Data?.Settings?.SeedTorrents ?? 3, as_queued: asQueued);
@@ -244,7 +250,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
 
     public async Task<String> AddNzbLink(String nzbLink)
     {
-        return await AddNzbRetry(async asQueued =>
+        return await HandleAddUsenetErrors(async asQueued =>
         {
             var result = await GetClient().Usenet.AddLinkAsync(nzbLink, as_queued: asQueued);
             return result.Data!.Hash!;
@@ -253,7 +259,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
 
     public virtual async Task<String> AddNzbFile(Byte[] bytes, String? name)
     {
-        return await AddNzbRetry(async asQueued =>
+        return await HandleAddUsenetErrors(async asQueued =>
         {
             var result = await GetClient().Usenet.AddFileAsync(bytes, name: name, as_queued: asQueued);
             return result.Data!.Hash!;
