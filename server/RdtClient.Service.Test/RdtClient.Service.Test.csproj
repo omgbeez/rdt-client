@@ -6,7 +6,7 @@
         <IsPackable>false</IsPackable>
         <AssemblyName>RdtClient.Service.Test</AssemblyName>
         <RootNamespace>RdtClient.Service.Test</RootNamespace>
-        <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
+        <TargetFramework>net9.0</TargetFramework>
     </PropertyGroup>
 
     <ItemGroup>
