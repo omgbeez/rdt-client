@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
         <AssemblyName>RdtClient.Service.Test</AssemblyName>
         <RootNamespace>RdtClient.Service.Test</RootNamespace>
+        <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
     </PropertyGroup>
 
     <ItemGroup>
