@@ -20,21 +20,22 @@ public class Sabnzbd(ILogger<Sabnzbd> logger, Torrents torrents, AppSettings app
             Slots = activeTorrents.Select((t, index) =>
             {
                 Double downloadProgress = 0;
-                var rdProgress = (t.RdProgress ?? 0.0) / 100.0;
+                var rdProgress = Math.Clamp(t.RdProgress ?? 0.0, 0.0, 100.0) / 100.0;
 
-                if (t.Downloads.Count > 0)
+                if (t.Downloads is { Count: > 0 })
                 {
                     var bytesDone = t.Downloads.Sum(m => m.BytesDone);
                     var bytesTotal = t.Downloads.Sum(m => m.BytesTotal);
-                    downloadProgress = bytesTotal > 0 ? (Double)bytesDone / bytesTotal : 0;
+                    downloadProgress = bytesTotal > 0 ? Math.Clamp((Double)bytesDone / bytesTotal, 0.0, 1.0) : 0;
                 }
 
                 var progress = (rdProgress + downloadProgress) / 2.0;
                 var timeLeft = "0:00:00";
-                if (progress > 0 && progress < 1.0)
+                var startTime = t.Retry > t.Added ? t.Retry.Value : t.Added;
+                var elapsed = DateTimeOffset.UtcNow - startTime;
+
+                if (progress is > 0 and < 1.0)
                 {
-                    var startTime = t.Retry > t.Added ? t.Retry.Value : t.Added;
-                    var elapsed = DateTimeOffset.UtcNow - startTime;
                     var totalEstimatedTime = TimeSpan.FromTicks((Int64)(elapsed.Ticks / progress));
                     var remaining = totalEstimatedTime - elapsed;
                     if (remaining.TotalSeconds > 0)

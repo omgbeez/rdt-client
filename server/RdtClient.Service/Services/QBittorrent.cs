@@ -216,18 +216,18 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
                 }
             }
 
-            var rdProgress = (torrent.RdProgress ?? 0.0) / 100.0;
-            var bytesTotal = torrent.RdSize ?? 1;
+            var rdProgress = Math.Clamp(torrent.RdProgress ?? 0.0, 0.0, 100.0) / 100.0;
+            var bytesTotal = torrent.RdSize ?? 0;
             var speed = torrent.RdSpeed ?? 0;
             var bytesDone = (Int64) (bytesTotal * rdProgress);
 
             Double downloadProgress = 0;
-            if (torrent.Downloads.Count > 0)
+            if (torrent.Downloads is { Count: > 0 })
             {
                 bytesDone = torrent.Downloads.Sum(m => m.BytesDone);
                 bytesTotal = torrent.Downloads.Sum(m => m.BytesTotal);
-                speed = (Int32) torrent.Downloads.Average(m => m.Speed);
-                downloadProgress = bytesTotal > 0 ? (Double) bytesDone / bytesTotal : 0;
+                speed = (Int32) (torrent.Downloads.Any() ? torrent.Downloads.Average(m => m.Speed) : 0);
+                downloadProgress = bytesTotal > 0 ? Math.Clamp((Double) bytesDone / bytesTotal, 0.0, 1.0) : 0;
             }
 
             var progress = (rdProgress + downloadProgress) / 2.0;
