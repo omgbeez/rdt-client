@@ -1,11 +1,13 @@
-﻿using System.Reflection;
+﻿using System.Net.Http;
+using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace RdtClient.Service.BackgroundServices;
 
-public class UpdateChecker(ILogger<UpdateChecker> logger) : BackgroundService
+public class UpdateChecker(ILogger<UpdateChecker> logger, IHttpClientFactory httpClientFactory) : BackgroundService
 {
     public static String? CurrentVersion { get; private set; }
     public static String? LatestVersion { get; private set; }
@@ -78,9 +80,9 @@ public class UpdateChecker(ILogger<UpdateChecker> logger) : BackgroundService
         logger.LogInformation("UpdateChecker stopped.");
     }
 
-    private static async Task<T?> GitHubRequest<T>(String endpoint, CancellationToken cancellationToken)
+    private async Task<T?> GitHubRequest<T>(String endpoint, CancellationToken cancellationToken)
     {
-            var httpClient = new HttpClient();
+            var httpClient = httpClientFactory.CreateClient();
             httpClient.DefaultRequestHeaders.UserAgent.Add(new("RdtClient", CurrentVersion));
             var response = await httpClient.GetStringAsync($"https://api.github.com{endpoint}", cancellationToken);
             
