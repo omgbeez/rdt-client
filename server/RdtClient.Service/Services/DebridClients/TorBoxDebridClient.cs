@@ -24,10 +24,10 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
                 throw new("TorBox API Key not set in the settings");
             }
 
-            var httpClient = httpClientFactory.CreateClient(); 
+            var httpClient = httpClientFactory.CreateClient(DiConfig.RD_CLIENT); 
             httpClient.Timeout = TimeSpan.FromSeconds(Settings.Get.Provider.Timeout);
 
-            var torBoxNetClient = new TorBoxNetClient(null, httpClient, 5);
+            var torBoxNetClient = new TorBoxNetClient(null, httpClient, 1);
             torBoxNetClient.UseApiAuthentication(apiKey);
 
             // Get the server time to fix up the timezones on results

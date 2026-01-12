@@ -89,20 +89,20 @@ public static class DiConfig
                         UseJitter = true,
                         DelayGenerator = args =>
                         {
-                            if (args.Outcome.Result is HttpResponseMessage response &&
+                            if (args.Outcome.Result is { } response &&
                                 response.Headers.RetryAfter is { } retryAfter)
                             {
                                 var delay = retryAfter.Delta ??
                                             (retryAfter.Date.HasValue
                                                 ? retryAfter.Date.Value - DateTimeOffset.UtcNow
                                                 : (TimeSpan?)null);
-
+        
                                 if (delay.HasValue && delay.Value > TimeSpan.Zero)
                                 {
                                     return new ValueTask<TimeSpan?>(delay.Value);
                                 }
                             }
-
+        
                             return new ValueTask<TimeSpan?>((TimeSpan?)null);
                         }
                     });
