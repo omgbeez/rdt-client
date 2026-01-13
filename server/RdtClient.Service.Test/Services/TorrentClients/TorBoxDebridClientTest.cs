@@ -530,6 +530,56 @@ public class TorBoxDebridClientTest
     }
 
     [Fact]
+    public async Task AddTorrentMagnet_ThrowsRateLimitException_OnRateLimitException()
+    {
+        // Arrange
+        var magnetLink = "magnet:?xt=urn:btih:test";
+        var torrentsApiMock = new Mock<ITorrentsApi>();
+        var userApiMock = new Mock<IUserApi>();
+        var clientMock = new Mock<TorBoxDebridClient>(_loggerMock.Object, _httpClientFactoryMock.Object, _fileFilterMock.Object) { CallBase = true };
+        var torBoxClientMock = new Mock<ITorBoxNetClient>();
+        
+        torBoxClientMock.Setup(m => m.Torrents).Returns(torrentsApiMock.Object);
+        torBoxClientMock.Setup(m => m.User).Returns(userApiMock.Object);
+        clientMock.Protected().Setup<ITorBoxNetClient>("GetClient").Returns(torBoxClientMock.Object);
+        
+        userApiMock.Setup(m => m.GetAsync(true, It.IsAny<CancellationToken>()))
+                   .ReturnsAsync(new Response<User> { Data = new User { Settings = new UserSettings { SeedTorrents = 5 } } });
+
+        torrentsApiMock.Setup(m => m.AddMagnetAsync(magnetLink, 5, It.IsAny<bool>(), It.IsAny<string?>(), false, It.IsAny<CancellationToken>()))
+                       .ThrowsAsync(new RateLimitException("TorBox rate limit exceeded", TimeSpan.FromMinutes(60)));
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<RateLimitException>(() => clientMock.Object.AddTorrentMagnet(magnetLink));
+        Assert.Equal(TimeSpan.FromMinutes(60), ex.RetryAfter);
+    }
+
+    [Fact]
+    public async Task AddTorrentMagnet_ThrowsRateLimitException_OnWrappedRateLimitException()
+    {
+        // Arrange
+        var magnetLink = "magnet:?xt=urn:btih:test";
+        var torrentsApiMock = new Mock<ITorrentsApi>();
+        var userApiMock = new Mock<IUserApi>();
+        var clientMock = new Mock<TorBoxDebridClient>(_loggerMock.Object, _httpClientFactoryMock.Object, _fileFilterMock.Object) { CallBase = true };
+        var torBoxClientMock = new Mock<ITorBoxNetClient>();
+        
+        torBoxClientMock.Setup(m => m.Torrents).Returns(torrentsApiMock.Object);
+        torBoxClientMock.Setup(m => m.User).Returns(userApiMock.Object);
+        clientMock.Protected().Setup<ITorBoxNetClient>("GetClient").Returns(torBoxClientMock.Object);
+        
+        userApiMock.Setup(m => m.GetAsync(true, It.IsAny<CancellationToken>()))
+                   .ReturnsAsync(new Response<User> { Data = new User { Settings = new UserSettings { SeedTorrents = 5 } } });
+
+        torrentsApiMock.Setup(m => m.AddMagnetAsync(magnetLink, 5, It.IsAny<bool>(), It.IsAny<string?>(), false, It.IsAny<CancellationToken>()))
+                       .ThrowsAsync(new Exception("Wrapped", new RateLimitException("TorBox rate limit exceeded", TimeSpan.FromMinutes(60))));
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<RateLimitException>(() => clientMock.Object.AddTorrentMagnet(magnetLink));
+        Assert.Equal(TimeSpan.FromMinutes(60), ex.RetryAfter);
+    }
+
+    [Fact]
     public async Task AddTorrentFile_ThrowsRateLimitException_OnActiveLimit()
     {
         // Arrange

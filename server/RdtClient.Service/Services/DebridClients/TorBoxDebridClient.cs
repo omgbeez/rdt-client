@@ -24,7 +24,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
                 throw new("TorBox API Key not set in the settings");
             }
 
-            var httpClient = httpClientFactory.CreateClient(DiConfig.RD_CLIENT); 
+            var httpClient = httpClientFactory.CreateClient(DiConfig.TORBOX_CLIENT); 
             httpClient.Timeout = TimeSpan.FromSeconds(Settings.Get.Provider.Timeout);
 
             var torBoxNetClient = new TorBoxNetClient(null, httpClient, 1);
@@ -200,12 +200,19 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         {
             return await action(false);
         }
+        catch (RateLimitException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex.InnerException is RateLimitException rateLimitException)
+        {
+            throw rateLimitException;
+        }
         catch (TorBoxException ex) when (ex.Error.Equals("active_limit", StringComparison.OrdinalIgnoreCase))
         {
             throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
         }
-        catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
-                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
+        catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase))
         {
             throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
         }
@@ -217,12 +224,19 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         {
             return await action(false);
         }
+        catch (RateLimitException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex.InnerException is RateLimitException rateLimitException)
+        {
+            throw rateLimitException;
+        }
         catch (TorBoxException ex) when (ex.Error.Equals("active_limit", StringComparison.OrdinalIgnoreCase))
         {
             throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
         }
-        catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase) ||
-                                   ex.Message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase))
+        catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase))
         {
             throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
         }
