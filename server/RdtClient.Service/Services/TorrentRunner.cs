@@ -359,15 +359,7 @@ public class TorrentRunner(ILogger<TorrentRunner> logger, Torrents torrents, Dow
                     }
                     catch (RateLimitException ex)
                     {
-                        NextDequeueTime = DateTimeOffset.Now.Add(ex.RetryAfter);
-
-                        Log($"Rate-limit reached, pausing dequeuing for {ex.RetryAfter.TotalMinutes} minutes (until {NextDequeueTime}): {ex.Message}", torrent);
-
-                        await remoteService.UpdateRateLimitStatus(new RateLimitStatus
-                        {
-                            NextDequeueTime = NextDequeueTime,
-                            SecondsRemaining = ex.RetryAfter.TotalSeconds
-                        });
+                        await SetRateLimit(ex.RetryAfter, ex.Message);
 
                         break;
                     }
@@ -728,6 +720,19 @@ public class TorrentRunner(ILogger<TorrentRunner> logger, Torrents torrents, Dow
         {
             Log($"TorrentRunner Tick End (took {sw.ElapsedMilliseconds}ms)");
         }
+    }
+
+    public async Task SetRateLimit(TimeSpan retryAfter, String message)
+    {
+        NextDequeueTime = DateTimeOffset.Now.Add(retryAfter);
+
+        Log($"Rate-limit reached, pausing dequeuing for {retryAfter.TotalMinutes} minutes (until {NextDequeueTime}): {message}");
+
+        await remoteService.UpdateRateLimitStatus(new RateLimitStatus
+        {
+            NextDequeueTime = NextDequeueTime,
+            SecondsRemaining = retryAfter.TotalSeconds
+        });
     }
 
     private void Log(String message, Download? download, Torrent? torrent)
