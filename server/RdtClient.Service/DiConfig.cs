@@ -4,6 +4,7 @@ using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Polly;
+using Polly.Timeout;
 using RateLimitHeaders.Polly;
 using RdtClient.Data.Models.Internal;
 using RdtClient.Service.BackgroundServices;
@@ -125,6 +126,11 @@ public static class DiConfig
 
                 return new ValueTask<TimeSpan?>((TimeSpan?)null);
             }
+        });
+
+        builder.AddTimeout(new TimeoutStrategyOptions
+        {
+            TimeoutGenerator = _ => new ValueTask<TimeSpan>(TimeSpan.FromSeconds(Settings.Get.Provider.Timeout))
         });
     }
 }
