@@ -26,7 +26,7 @@ public class RateLimitHandler : DelegatingHandler
 
             return response;
         }
-        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        catch (TaskCanceledException _) when (!cancellationToken.IsCancellationRequested)
         {
             throw new RateLimitException("TorBox rate limit exceeded (timeout)", TimeSpan.FromMinutes(2));
         }
