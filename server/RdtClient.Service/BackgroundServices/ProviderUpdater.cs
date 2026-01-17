@@ -30,7 +30,7 @@ public class ProviderUpdater(ILogger<ProviderUpdater> logger, IServiceProvider s
             {
                 var torrents = await torrentService.Get();
 
-                if (_nextUpdate < DateTime.UtcNow && (Settings.Get.Provider.AutoImport || torrents.Any(t => t.RdStatus != TorrentStatus.Finished)))
+                if (_nextUpdate < DateTime.UtcNow && (Settings.Get.Provider.AutoImport || torrents.Any(t => t.RdStatus != TorrentStatus.Finished) || RdtHub.HasConnections))
                 {
                     logger.LogDebug($"Updating torrent info from debrid provider");
                     
@@ -45,9 +45,9 @@ public class ProviderUpdater(ILogger<ProviderUpdater> logger, IServiceProvider s
                     {
                         updateTime = Settings.Get.Provider.CheckInterval;
 
-                        if (updateTime < 5)
+                        if (updateTime < 1)
                         {
-                            updateTime = 5;
+                            updateTime = 1;
                         }
                     }
 
