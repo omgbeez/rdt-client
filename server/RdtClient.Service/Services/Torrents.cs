@@ -58,28 +58,14 @@ public class Torrents(
 
     private static readonly SemaphoreSlim TorrentResetLock = new(1, 1);
 
+    public virtual (Int64 Speed, Int64 BytesTotal, Int64 BytesDone) GetDownloadStats(Guid downloadId)
+    {
+        return TorrentRunner.GetStats(downloadId);
+    }
+
     public virtual async Task<IList<Torrent>> Get()
     {
         var torrents = await torrentData.Get();
-
-        foreach (var torrent in torrents)
-        {
-            foreach (var download in torrent.Downloads)
-            {
-                if (TorrentRunner.ActiveDownloadClients.TryGetValue(download.DownloadId, out var downloadClient))
-                {
-                    download.Speed = downloadClient.Speed;
-                    download.BytesTotal = downloadClient.BytesTotal;
-                    download.BytesDone = downloadClient.BytesDone;
-                }
-
-                if (TorrentRunner.ActiveUnpackClients.TryGetValue(download.DownloadId, out var unpackClient))
-                {
-                    download.BytesTotal = 100;
-                    download.BytesDone = unpackClient.Progess;
-                }
-            }
-        }
 
         return torrents;
     }
@@ -878,22 +864,6 @@ public class Torrents(
         }
 
         await UpdateTorrentClientData(torrent);
-
-        foreach (var download in torrent.Downloads)
-        {
-            if (TorrentRunner.ActiveDownloadClients.TryGetValue(download.DownloadId, out var downloadClient))
-            {
-                download.Speed = downloadClient.Speed;
-                download.BytesTotal = downloadClient.BytesTotal;
-                download.BytesDone = downloadClient.BytesDone;
-            }
-
-            if (TorrentRunner.ActiveUnpackClients.TryGetValue(download.DownloadId, out var unpackClient))
-            {
-                download.BytesTotal = 100;
-                download.BytesDone = unpackClient.Progess;
-            }
-        }
 
         return torrent;
     }

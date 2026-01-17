@@ -16,6 +16,21 @@ public class TorrentRunner(ILogger<TorrentRunner> logger, Torrents torrents, Dow
     public static readonly ConcurrentDictionary<Guid, DownloadClient> ActiveDownloadClients = new();
     public static readonly ConcurrentDictionary<Guid, UnpackClient> ActiveUnpackClients = new();
 
+    public static (Int64 Speed, Int64 BytesTotal, Int64 BytesDone) GetStats(Guid downloadId)
+    {
+        if (ActiveDownloadClients.TryGetValue(downloadId, out var downloadClient))
+        {
+            return (downloadClient.Speed, downloadClient.BytesTotal, downloadClient.BytesDone);
+        }
+
+        if (ActiveUnpackClients.TryGetValue(downloadId, out var unpackClient))
+        {
+            return (0, 100, unpackClient.Progess);
+        }
+
+        return (0, 0, 0);
+    }
+
     public static Boolean IsPausedForLowDiskSpace { get; set; }
 
     public static DateTimeOffset NextDequeueTime { get; private set; } = DateTimeOffset.MinValue;
@@ -678,8 +693,8 @@ public class TorrentRunner(ILogger<TorrentRunner> logger, Torrents torrents, Dow
 
                     var completePerc = 0;
 
-                    var totalDownloadBytes = torrent.Downloads.Sum(m => m.BytesTotal);
-                    var totalDoneBytes = torrent.Downloads.Sum(m => m.BytesDone);
+                    var totalDownloadBytes = torrent.Downloads.Sum(m => GetStats(m.DownloadId).BytesTotal);
+                    var totalDoneBytes = torrent.Downloads.Sum(m => GetStats(m.DownloadId).BytesDone);
 
                     if (totalDownloadBytes > 0)
                     {

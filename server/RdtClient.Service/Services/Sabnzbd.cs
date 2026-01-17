@@ -22,10 +22,11 @@ public class Sabnzbd(ILogger<Sabnzbd> logger, Torrents torrents, AppSettings app
                 Double downloadProgress = 0;
                 var rdProgress = Math.Clamp(t.RdProgress ?? 0.0, 0.0, 100.0) / 100.0;
 
-                if (t.Downloads is { Count: > 0 })
+                var dlStats = t.Downloads.Select(m => torrents.GetDownloadStats(m.DownloadId)).ToList();
+                if (dlStats.Count > 0)
                 {
-                    var bytesDone = t.Downloads.Sum(m => m.BytesDone);
-                    var bytesTotal = t.Downloads.Sum(m => m.BytesTotal);
+                    var bytesDone = dlStats.Sum(m => m.BytesDone);
+                    var bytesTotal = dlStats.Sum(m => m.BytesTotal);
                     downloadProgress = bytesTotal > 0 ? Math.Clamp((Double)bytesDone / bytesTotal, 0.0, 1.0) : 0;
                 }
 
@@ -49,8 +50,8 @@ public class Sabnzbd(ILogger<Sabnzbd> logger, Torrents torrents, AppSettings app
                     Index = index,
                     NzoId = t.Hash,
                     Filename = t.RdName ?? t.Hash,
-                    Size = FileSizeHelper.FormatSize(t.Downloads.Sum(d => d.BytesTotal)),
-                    SizeLeft = FileSizeHelper.FormatSize(t.Downloads.Sum(d => d.BytesTotal - d.BytesDone)),
+                    Size = FileSizeHelper.FormatSize(dlStats.Sum(d => d.BytesTotal)),
+                    SizeLeft = FileSizeHelper.FormatSize(dlStats.Sum(d => d.BytesTotal - d.BytesDone)),
                     Percentage = (progress * 100.0).ToString("0"),
 
                     Status = t.RdStatus switch

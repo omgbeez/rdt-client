@@ -224,10 +224,11 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
             Double downloadProgress = 0;
             if (torrent.Downloads is { Count: > 0 })
             {
-                var dlBytesDone = torrent.Downloads.Sum(m => m.BytesDone);
-                var dlBytesTotal = torrent.Downloads.Sum(m => m.BytesTotal);
-                speed = (Int32) (torrent.Downloads.Any() ? torrent.Downloads.Average(m => m.Speed) : 0);
-                downloadProgress = dlBytesTotal > 0 ? Math.Clamp((Double) dlBytesDone / dlBytesTotal, 0.0, 1.0) : 0;
+                var dlStats = torrent.Downloads.Select(m => torrents.GetDownloadStats(m.DownloadId)).ToList();
+                var dlBytesDone = dlStats.Sum(m => m.BytesDone);
+                var dlBytesTotal = dlStats.Sum(m => m.BytesTotal);
+                speed = (Int32)(dlStats.Any() ? dlStats.Average(m => m.Speed) : 0);
+                downloadProgress = dlBytesTotal > 0 ? Math.Clamp((Double)dlBytesDone / dlBytesTotal, 0.0, 1.0) : 0;
             }
 
             var progress = (rdProgress + downloadProgress) / 2.0;
@@ -353,9 +354,10 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
 
         if (torrent.Downloads.Count > 0)
         {
-            bytesDone = torrent.Downloads.Sum(m => m.BytesDone);
-            bytesTotal = torrent.Downloads.Sum(m => m.BytesTotal);
-            speed = (Int32) torrent.Downloads.Average(m => m.Speed);
+            var dlStats = torrent.Downloads.Select(m => torrents.GetDownloadStats(m.DownloadId)).ToList();
+            bytesDone = dlStats.Sum(m => m.BytesDone);
+            bytesTotal = dlStats.Sum(m => m.BytesTotal);
+            speed = (Int32)(dlStats.Any() ? dlStats.Average(m => m.Speed) : 0);
         }
 
         var result = new TorrentProperties
