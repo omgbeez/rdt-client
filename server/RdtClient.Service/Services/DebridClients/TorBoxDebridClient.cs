@@ -25,8 +25,6 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
             }
 
             var httpClient = httpClientFactory.CreateClient(DiConfig.TORBOX_CLIENT); 
-            httpClient.Timeout = TimeSpan.FromSeconds(Settings.Get.Provider.Timeout);
-
             var torBoxNetClient = new TorBoxNetClient(null, httpClient, 1);
             torBoxNetClient.UseApiAuthentication(apiKey);
 
