@@ -97,7 +97,6 @@ public static class DiConfig
                 { Exception: HttpRequestException } => PredicateResult.True(),
                 { Result.StatusCode: HttpStatusCode.RequestTimeout } => PredicateResult.True(),
                 { Result.StatusCode: HttpStatusCode.TooManyRequests } => PredicateResult.True(),
-                { Result.StatusCode: >= HttpStatusCode.InternalServerError } => PredicateResult.True(),
                 _ => PredicateResult.False()
             },
             MaxRetryAttempts = 2,
