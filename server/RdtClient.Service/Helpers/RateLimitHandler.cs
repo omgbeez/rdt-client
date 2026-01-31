@@ -1,4 +1,5 @@
 using System.Net;
+using Polly.Timeout;
 using RdtClient.Data.Models.Internal;
 
 namespace RdtClient.Service.Helpers;
@@ -26,7 +27,7 @@ public class RateLimitHandler : DelegatingHandler
 
             return response;
         }
-        catch (TaskCanceledException _) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (ex is TimeoutRejectedException or TaskCanceledException)
         {
             throw new RateLimitException("TorBox rate limit exceeded (timeout)", TimeSpan.FromMinutes(2));
         }

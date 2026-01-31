@@ -86,6 +86,10 @@ public static class DiConfig
 
     private static void ConfigureResiliencePipeline(ResiliencePipelineBuilder<HttpResponseMessage> builder)
     {
+        builder.AddTimeout(new TimeoutStrategyOptions
+        {
+            TimeoutGenerator = _ => new ValueTask<TimeSpan>(TimeSpan.FromSeconds(Settings.Get.Provider.Timeout))
+        });
         builder.AddRateLimitHeaders(options =>
         {
             options.EnableProactiveThrottling = true;
@@ -125,11 +129,6 @@ public static class DiConfig
 
                 return new ValueTask<TimeSpan?>((TimeSpan?)null);
             }
-        });
-
-        builder.AddTimeout(new TimeoutStrategyOptions
-        {
-            TimeoutGenerator = _ => new ValueTask<TimeSpan>(TimeSpan.FromSeconds(Settings.Get.Provider.Timeout))
         });
     }
 }
