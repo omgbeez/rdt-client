@@ -418,6 +418,8 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
             torrent.RdSeeders = rdTorrent.Seeders;
             torrent.RdStatusRaw = rdTorrent.Status;
 
+            var oldStatus = torrent.RdStatus;
+
             if (rdTorrent.Host == "True")
             {
                 torrent.RdStatus = TorrentStatus.Finished;
@@ -446,8 +448,13 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
                     "checkingDL" => TorrentStatus.Downloading,
                     "cached" => TorrentStatus.Finished,
                     "error" => TorrentStatus.Error,
-                    _ => torrent.RdStatus  // Unknown codes keep the same value.
+                    _ => torrent.RdStatus // Unknown codes keep the same value.
                 };
+            }
+
+            if (oldStatus != torrent.RdStatus)
+            {
+                logger.LogInformation("TorBox torrent {TorrentName} status changed from {OldStatus} to {NewStatus}", torrent.RdName, oldStatus, torrent.RdStatus);
             }
 
         }
