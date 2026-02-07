@@ -454,7 +454,7 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
 
             if (oldStatus != torrent.RdStatus)
             {
-                logger.LogInformation("TorBox torrent {TorrentName} status changed from {OldStatus} to {NewStatus}", torrent.RdName, oldStatus, torrent.RdStatus);
+                logger.LogInformation("TorBox torrent {TorrentName} status changed from {OldStatus} to {NewStatus} with provider status {DownloadStatus}", torrent.RdName, oldStatus, torrent.RdStatus, rdTorrent.Status);
             }
 
         }
