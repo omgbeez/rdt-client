@@ -418,8 +418,6 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
             torrent.RdSeeders = rdTorrent.Seeders;
             torrent.RdStatusRaw = rdTorrent.Status;
 
-            var oldStatus = torrent.RdStatus;
-
             if (rdTorrent.Host == "True")
             {
                 torrent.RdStatus = TorrentStatus.Finished;
@@ -448,15 +446,10 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
                     "checkingDL" => TorrentStatus.Downloading,
                     "cached" => TorrentStatus.Finished,
                     "error" => TorrentStatus.Error,
-                    _ => torrent.RdStatus // Unknown codes keep the same value.
+                    _ when rdTorrent.Status != null && rdTorrent.Status.StartsWith("failed") => TorrentStatus.Error,
+                    _ => LogUnmappedStatus(rdTorrent.Status, torrent)
                 };
             }
-
-            if (oldStatus != torrent.RdStatus)
-            {
-                logger.LogInformation("TorBox torrent {TorrentName} status changed from {OldStatus} to {NewStatus} with provider status {DownloadStatus}", torrent.RdName, oldStatus, torrent.RdStatus, rdTorrent.Status);
-            }
-
         }
         catch (Exception ex)
         {
@@ -602,6 +595,16 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
                 Directory.Delete(hashDir, true);
             }
         }
+    }
+
+    private TorrentStatus LogUnmappedStatus(String? status, Torrent torrent)
+    {
+        if (!String.IsNullOrWhiteSpace(status))
+        {
+            logger.LogInformation("TorBoxDebridClient encountered an unmapped status: {Status} for torrent {TorrentName}", status, torrent.RdName);
+        }
+
+        return torrent.RdStatus ?? TorrentStatus.Processing;
     }
 
     private void Log(String message, Torrent? torrent = null)

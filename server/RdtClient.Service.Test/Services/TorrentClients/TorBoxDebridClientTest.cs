@@ -647,4 +647,60 @@ public class TorBoxDebridClientTest
         usenetApiMock.Verify(m => m.AddFileAsync(bytes, It.IsAny<Int32>(), name, It.IsAny<String?>(), false, It.IsAny<CancellationToken>()), Times.Once);
         usenetApiMock.Verify(m => m.AddFileAsync(bytes, It.IsAny<Int32>(), name, It.IsAny<String?>(), true, It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task UpdateData_SetsErrorStatus_WhenTorBoxStatusStartsWithFailed()
+    {
+        // Arrange
+        var torrent = new Torrent
+        {
+            RdId = "test-rd-id",
+            RdStatus = TorrentStatus.Downloading
+        };
+        var torrentClientTorrent = new DebridClientTorrent
+        {
+            Status = "failed (Aborted, cannot be completed - https://sabnzbd.org/not-complete)",
+            Filename = "test-file"
+        };
+
+        var clientMock = new Mock<TorBoxDebridClient>(_loggerMock.Object, _httpClientFactoryMock.Object, _fileFilterMock.Object);
+
+        // Act
+        var result = await clientMock.Object.UpdateData(torrent, torrentClientTorrent);
+
+        // Assert
+        Assert.Equal(TorrentStatus.Error, result.RdStatus);
+    }
+
+    [Fact]
+    public async Task UpdateData_LogsWarning_WhenTorBoxStatusIsUnmapped()
+    {
+        // Arrange
+        var torrent = new Torrent
+        {
+            RdId = "test-rd-id",
+            RdStatus = TorrentStatus.Downloading,
+            RdName = "test-torrent"
+        };
+        var torrentClientTorrent = new DebridClientTorrent
+        {
+            Status = "some-unknown-status",
+            Filename = "test-torrent"
+        };
+
+        var clientMock = new Mock<TorBoxDebridClient>(_loggerMock.Object, _httpClientFactoryMock.Object, _fileFilterMock.Object);
+
+        // Act
+        await clientMock.Object.UpdateData(torrent, torrentClientTorrent);
+
+        // Assert
+        _loggerMock.Verify(
+            x => x.Log(
+                Microsoft.Extensions.Logging.LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("unmapped status") && v.ToString()!.Contains("some-unknown-status")),
+                It.IsAny<Exception>(),
+                It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
+            Times.Once);
+    }
 }
