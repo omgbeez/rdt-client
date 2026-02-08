@@ -221,17 +221,21 @@ public class QBittorrent(ILogger<QBittorrent> logger, Settings settings, Authent
             var speed = torrent.RdSpeed ?? 0;
             var bytesDone = (Int64) (bytesTotal * rdProgress);
 
-            Double downloadProgress = 0;
+            Double progress;
             if (torrent.Downloads is { Count: > 0 })
             {
                 var dlStats = torrent.Downloads.Select(m => torrents.GetDownloadStats(m.DownloadId)).ToList();
                 var dlBytesDone = dlStats.Sum(m => m.BytesDone);
                 var dlBytesTotal = dlStats.Sum(m => m.BytesTotal);
                 speed = (Int32)(dlStats.Any() ? dlStats.Average(m => m.Speed) : 0);
-                downloadProgress = dlBytesTotal > 0 ? Math.Clamp((Double)dlBytesDone / dlBytesTotal, 0.0, 1.0) : 0;
+                var downloadProgress = dlBytesTotal > 0 ? Math.Clamp((Double)dlBytesDone / dlBytesTotal, 0.0, 1.0) : 0;
+                progress = (rdProgress + downloadProgress) / 2.0;
+            }
+            else
+            {
+                progress = rdProgress;
             }
 
-            var progress = (rdProgress + downloadProgress) / 2.0;
             var remaining = TimeSpan.Zero;
             if (progress > 0 && progress < 1.0)
             {
