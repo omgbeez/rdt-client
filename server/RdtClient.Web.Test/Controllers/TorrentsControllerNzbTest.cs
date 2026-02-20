@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
+using RdtClient.Service.Helpers;
 using RdtClient.Service.Services;
 using RdtClient.Web.Controllers;
 
@@ -11,13 +12,15 @@ public class TorrentsControllerNzbTest
 {
     private readonly Mock<Torrents> _torrentsMock;
     private readonly Mock<ILogger<TorrentsController>> _loggerMock;
+    private readonly Mock<IRateLimitCoordinator> _coordinatorMock;
     private readonly TorrentsController _controller;
 
     public TorrentsControllerNzbTest()
     {
         _torrentsMock = new(null!, null!, null!, null!, null!, null!, null!, null!, null!, null!, null!);
         _loggerMock = new();
-        _controller = new(_loggerMock.Object, _torrentsMock.Object, null!);
+        _coordinatorMock = new();
+        _controller = new(_loggerMock.Object, _torrentsMock.Object, null!, _coordinatorMock.Object);
     }
 
     [Fact]

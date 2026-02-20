@@ -11,9 +11,12 @@ using Torrent = RdtClient.Data.Models.Data.Torrent;
 
 namespace RdtClient.Service.Services.DebridClients;
 
-public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientFactory httpClientFactory, IDownloadableFileFilter fileFilter) : IDebridClient
+public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientFactory httpClientFactory, IDownloadableFileFilter fileFilter, IRateLimitCoordinator coordinator) : IDebridClient
 {
+    private const String TorBoxApiHost = "api.torbox.app";
+
     private TimeSpan? _offset;
+
     protected virtual ITorBoxNetClient GetClient()
     {
         try
@@ -209,10 +212,12 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         }
         catch (TorBoxException ex) when (ex.Error.Equals("active_limit", StringComparison.OrdinalIgnoreCase))
         {
+            coordinator.UpdateCooldown(TorBoxApiHost, TimeSpan.FromMinutes(2));
             throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
         }
         catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase))
         {
+            coordinator.UpdateCooldown(TorBoxApiHost, TimeSpan.FromMinutes(2));
             throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
         }
     }
@@ -233,10 +238,12 @@ public class TorBoxDebridClient(ILogger<TorBoxDebridClient> logger, IHttpClientF
         }
         catch (TorBoxException ex) when (ex.Error.Equals("active_limit", StringComparison.OrdinalIgnoreCase))
         {
+            coordinator.UpdateCooldown(TorBoxApiHost, TimeSpan.FromMinutes(2));
             throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
         }
         catch (Exception ex) when (ex.Message.Contains("slow_down", StringComparison.OrdinalIgnoreCase))
         {
+            coordinator.UpdateCooldown(TorBoxApiHost, TimeSpan.FromMinutes(2));
             throw new RateLimitException(ex.Message, TimeSpan.FromMinutes(2));
         }
     }

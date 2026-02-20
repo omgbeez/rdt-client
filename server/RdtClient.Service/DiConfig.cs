@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Polly;
 using Polly.Timeout;
 using RateLimitHeaders.Polly;
-using RdtClient.Data.Models.Internal;
 using RdtClient.Service.BackgroundServices;
 using RdtClient.Service.Helpers;
 using RdtClient.Service.Middleware;
@@ -29,6 +28,7 @@ public static class DiConfig
         services.AddSingleton<IAllDebridNetClientFactory, AllDebridNetClientFactory>();
         services.AddScoped<AllDebridDebridClient>();
 
+        services.AddSingleton<IRateLimitCoordinator, RateLimitCoordinator>();
         services.AddSingleton<IProcessFactory, ProcessFactory>();
         services.AddSingleton<IFileSystem, FileSystem>();
 
@@ -113,17 +113,11 @@ public static class DiConfig
             {
                 if (args.Outcome.Result is { StatusCode: HttpStatusCode.TooManyRequests } response)
                 {
-                    var retryAfter = response.Headers.RetryAfter;
-                    var delay = retryAfter?.Delta ?? (retryAfter?.Date.HasValue == true ? retryAfter.Date.Value - DateTimeOffset.UtcNow : TimeSpan.FromMinutes(2));
+                    var delay = RateLimitHandler.GetRetryAfterDelay(response);
 
-                    if (delay < TimeSpan.Zero)
+                    if (delay >= TimeSpan.FromSeconds(10))
                     {
-                        delay = TimeSpan.FromMinutes(2);
-                    }
-
-                    if (delay >= TimeSpan.FromSeconds(Settings.Get.Provider.Timeout))
-                    {
-                        throw new RateLimitException("TorBox rate limit exceeded", delay);
+                        return new ValueTask<TimeSpan?>((TimeSpan?)null);
                     }
 
                     return new ValueTask<TimeSpan?>(delay);
