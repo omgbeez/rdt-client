@@ -19,6 +19,7 @@ public static class DiConfig
 {
     public const String RD_CLIENT = "RdClient";
     public const String TORBOX_CLIENT = "TorBoxClient";
+    public const String TORBOX_CLIENT_SLOW = "TorBoxClientSlow";
     public static readonly String UserAgent = $"rdt-client {Assembly.GetEntryAssembly()?.GetName().Version}";
 
     public static void RegisterRdtServices(this IServiceCollection services)
@@ -82,8 +83,11 @@ public static class DiConfig
         // This likely works for most providers, but should be verified and then the providers changed
         // to this HTTP client for added resilience.
         services.AddHttpClient(TORBOX_CLIENT)
-                .AddHttpMessageHandler<RateLimitHandler>()
                 .AddResilienceHandler("torbox_client_handler", ConfigureResiliencePipeline);
+        
+        services.AddHttpClient(TORBOX_CLIENT_SLOW)
+                .AddHttpMessageHandler<RateLimitHandler>()
+                .AddResilienceHandler("torbox_client_handler_slow", ConfigureResiliencePipeline);
     }
 
     private static void ConfigureResiliencePipeline(ResiliencePipelineBuilder<HttpResponseMessage> builder)
@@ -115,7 +119,7 @@ public static class DiConfig
                 {
                     var delay = RateLimitHandler.GetRetryAfterDelay(response);
 
-                    if (delay >= TimeSpan.FromSeconds(10))
+                    if (delay >= TimeSpan.FromMinutes(10))
                     {
                         return new ValueTask<TimeSpan?>((TimeSpan?)null);
                     }
