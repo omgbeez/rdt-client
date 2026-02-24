@@ -19,6 +19,7 @@ public static class DiConfig
 {
     public const String RD_CLIENT = "RdClient";
     public const String TORBOX_CLIENT = "TorBoxClient";
+    public const String TORBOX_CLIENT_SLOW = "TorBoxClientSlow";
     public static readonly String UserAgent = $"rdt-client {Assembly.GetEntryAssembly()?.GetName().Version}";
 
     public static void RegisterRdtServices(this IServiceCollection services)
@@ -84,6 +85,10 @@ public static class DiConfig
         services.AddHttpClient(TORBOX_CLIENT)
                 .AddHttpMessageHandler<RateLimitHandler>()
                 .AddResilienceHandler("torbox_client_handler", ConfigureResiliencePipeline);
+        
+        services.AddHttpClient(TORBOX_CLIENT_SLOW)
+                .AddHttpMessageHandler<RateLimitHandler>()
+                .AddResilienceHandler("torbox_client_handler_slow", ConfigureResiliencePipeline);
     }
 
     private static void ConfigureResiliencePipeline(ResiliencePipelineBuilder<HttpResponseMessage> builder)

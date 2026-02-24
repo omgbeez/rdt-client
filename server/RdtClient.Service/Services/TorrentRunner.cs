@@ -258,6 +258,17 @@ public class TorrentRunner(ILogger<TorrentRunner> logger, Torrents torrents, Dow
 
         var allTorrents = await torrents.Get();
 
+        var nextAllowedAt = coordinator.GetMaxNextAllowedAt();
+        var isRateLimited = nextAllowedAt > DateTimeOffset.UtcNow;
+
+        if (isRateLimited)
+        {
+            logger.LogDebug($"TorrentRunner Tick is paused until {nextAllowedAt}, {nextAllowedAt - DateTimeOffset.Now} remaining");
+
+            return;
+        }
+            
+
         // Check for deleted torrents that are stuck in the ActiveDownloads or ActiveUnpacks
         foreach (var activeDownload in ActiveDownloadClients)
         {
@@ -347,41 +358,33 @@ public class TorrentRunner(ILogger<TorrentRunner> logger, Torrents torrents, Dow
 
         if (torrentsToAddToProvider.Count != 0)
         {
-            var nextAllowedAt = coordinator.GetMaxNextAllowedAt();
-            if (nextAllowedAt > DateTimeOffset.UtcNow)
+            var downloadingTorrentsCount = allTorrents.Count(m => m.RdStatus is not (TorrentStatus.Queued or TorrentStatus.Finished or TorrentStatus.Error));
+
+            var maxParallelDownloads = Settings.Get.Provider.MaxParallelDownloads;
+
+            logger.LogDebug("Currently downloading {downloadingTorrentCount}/{maxParallelDownloads} torrents, {queuedCount} queued.",
+                            downloadingTorrentsCount,
+                            maxParallelDownloads,
+                            torrentsToAddToProvider.Count);
+
+            var dequeueCount = maxParallelDownloads == 0 ? torrentsToAddToProvider.Count : maxParallelDownloads - downloadingTorrentsCount;
+
+            foreach (var torrent in torrentsToAddToProvider.Take(dequeueCount))
             {
-                logger.LogDebug($"Dequeuing torrents is paused until {nextAllowedAt}, {nextAllowedAt - DateTimeOffset.Now} remaining");
-            }
-            else
-            {
-                var downloadingTorrentsCount = allTorrents.Count(m => m.RdStatus is not (TorrentStatus.Queued or TorrentStatus.Finished or TorrentStatus.Error));
-
-                var maxParallelDownloads = Settings.Get.Provider.MaxParallelDownloads;
-
-                logger.LogDebug("Currently downloading {downloadingTorrentCount}/{maxParallelDownloads} torrents, {queuedCount} queued.",
-                                downloadingTorrentsCount,
-                                maxParallelDownloads,
-                                torrentsToAddToProvider.Count);
-
-                var dequeueCount = maxParallelDownloads == 0 ? torrentsToAddToProvider.Count : maxParallelDownloads - downloadingTorrentsCount;
-
-                foreach (var torrent in torrentsToAddToProvider.Take(dequeueCount))
+                try
                 {
-                    try
-                    {
-                        await torrents.DequeueFromDebridQueue(torrent);
-                    }
-                    catch (RateLimitException ex)
-                    {
-                        await SetRateLimit(ex.RetryAfter, ex.Message);
+                    await torrents.DequeueFromDebridQueue(torrent);
+                }
+                catch (RateLimitException ex)
+                {
+                    await SetRateLimit(ex.RetryAfter, ex.Message);
 
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        await torrents.UpdateComplete(torrent.TorrentId, $"Could not add to provider: {ex.Message}", DateTimeOffset.Now, true);
-                        logger.LogWarning(ex, "Could not dequeue torrent {torrentId}", torrent.TorrentId);
-                    }
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    await torrents.UpdateComplete(torrent.TorrentId, $"Could not add to provider: {ex.Message}", DateTimeOffset.Now, true);
+                    logger.LogWarning(ex, "Could not dequeue torrent {torrentId}", torrent.TorrentId);
                 }
             }
         }
@@ -497,6 +500,11 @@ public class TorrentRunner(ILogger<TorrentRunner> logger, Torrents torrents, Dow
                                 download.FileName = fileName;
                             }
                         }
+                    }
+                    catch (RateLimitException ex)
+                    {
+                        await SetRateLimit(ex.RetryAfter, ex.Message);
+                        return;
                     }
                     catch (Exception ex)
                     {
@@ -723,6 +731,11 @@ public class TorrentRunner(ILogger<TorrentRunner> logger, Torrents torrents, Dow
                         Log($"Waiting for downloads to complete. {completeCount}/{torrent.Downloads.Count} complete ({completePerc}%)", torrent);
                     }
                 }
+            }
+            catch (RateLimitException ex)
+            {
+                await SetRateLimit(ex.RetryAfter, ex.Message);
+                return;
             }
             catch (Exception ex)
             {
