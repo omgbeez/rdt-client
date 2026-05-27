@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RdtClient.Data.Data;
+using RdtClient.Data.Models.Internal;
 using RdtClient.Service.Services;
 
 namespace RdtClient.Service.BackgroundServices;
@@ -14,12 +15,18 @@ public class Startup(IServiceProvider serviceProvider) : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        Ready = false;
+
         var version = Assembly.GetEntryAssembly()?.GetName().Version;
 
         using var scope = serviceProvider.CreateScope();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Startup>>();
+        var appSettings = scope.ServiceProvider.GetRequiredService<AppSettings>();
 
         logger.LogWarning("Starting host on version {version}", version);
+
+        EnsureDirectoryExists(appSettings.Database?.Path);
+        EnsureDirectoryExists(appSettings.Logging?.File?.Path);
 
         var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
         await dbContext.Database.MigrateAsync(cancellationToken);
@@ -39,6 +46,23 @@ public class Startup(IServiceProvider serviceProvider) : IHostedService
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
+        Ready = false;
+
         return Task.CompletedTask;
+    }
+
+    private static void EnsureDirectoryExists(String? path)
+    {
+        if (String.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        var directory = Path.GetDirectoryName(path);
+
+        if (!String.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
     }
 }

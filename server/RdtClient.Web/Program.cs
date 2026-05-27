@@ -1,9 +1,12 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using RdtClient.Data.Data;
 using RdtClient.Data.Models.Internal;
+using RdtClient.Service.BackgroundServices;
 using RdtClient.Service;
 using RdtClient.Service.Helpers;
 using RdtClient.Service.Middleware;
@@ -39,22 +42,26 @@ builder.WebHost.ConfigureKestrel(options =>
     options.ListenAnyIP(appSettings.Port);
 });
 
-if (appSettings.Logging?.File?.Path != null)
+builder.Host.UseSerilog((_, lc) =>
 {
-    builder.Host.UseSerilog((_, lc) => lc.Enrich.FromLogContext()
-                                         .Enrich.With<CredentialRedactorEnricher>()
-                                         .WriteTo.File(appSettings.Logging.File.Path,
-                                                       rollOnFileSizeLimit: true,
-                                                       fileSizeLimitBytes: appSettings.Logging.File.FileSizeLimitBytes,
-                                                       retainedFileCountLimit: appSettings.Logging.File.MaxRollingFiles,
-                                                       outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
-                                                       restrictedToMinimumLevel: LogEventLevel.Verbose)
-                                         .WriteTo.Console()
-                                         .MinimumLevel.ControlledBy(Settings.LoggingLevelSwitch)
-                                         .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-                                         .MinimumLevel.Override("System.Net.Http", LogEventLevel.Warning)
-                                         .MinimumLevel.Override("Polly", LogEventLevel.Warning));
-}
+    lc.Enrich.FromLogContext()
+      .Enrich.With<CredentialRedactorEnricher>()
+      .WriteTo.Console()
+      .MinimumLevel.ControlledBy(Settings.LoggingLevelSwitch)
+      .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+      .MinimumLevel.Override("System.Net.Http", LogEventLevel.Warning)
+      .MinimumLevel.Override("Polly", LogEventLevel.Warning);
+
+    if (!String.IsNullOrWhiteSpace(appSettings.Logging?.File?.Path))
+    {
+        lc.WriteTo.File(appSettings.Logging.File.Path,
+                        rollOnFileSizeLimit: true,
+                        fileSizeLimitBytes: appSettings.Logging.File.FileSizeLimitBytes,
+                        retainedFileCountLimit: appSettings.Logging.File.MaxRollingFiles,
+                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
+                        restrictedToMinimumLevel: LogEventLevel.Verbose);
+    }
+});
 
 SelfLog.Enable(msg =>
 {
@@ -142,6 +149,10 @@ builder.Services.AddSignalR(hubOptions =>
     hubOptions.EnableDetailedErrors = true;
 });
 
+builder.Services.AddHealthChecks()
+       .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"])
+       .AddCheck<StartupHealthCheck>("startup", tags: ["ready"]);
+
 builder.Host.UseWindowsService();
 
 DiConfig.Config(builder.Services, appSettings);
@@ -188,6 +199,18 @@ try
     app.UseAuthentication();
 
     app.UseAuthorization();
+
+    app.MapHealthChecks("/health/live",
+                        new HealthCheckOptions
+                        {
+                            Predicate = registration => registration.Tags.Contains("live")
+                        });
+
+    app.MapHealthChecks("/health/ready",
+                        new HealthCheckOptions
+                        {
+                            Predicate = registration => registration.Tags.Contains("ready")
+                        });
 
     app.MapHub<RdtHub>("/hub");
 
